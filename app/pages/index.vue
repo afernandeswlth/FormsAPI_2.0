@@ -15,6 +15,7 @@ const formRoutes: Record<string, string> = {
   'redraw': '/forms/redraw',
   'open-offset': '/forms/open-offset',
   'product-switch': '/forms/product-switch',
+  'principal-reduction': '/forms/principal-reduction',
 }
 </script>
 

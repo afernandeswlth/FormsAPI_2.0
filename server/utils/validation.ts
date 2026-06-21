@@ -257,12 +257,36 @@ const openOffset = baseSchema
     path: ['signatures'],
   })
 
-const principalReduction = baseSchema.extend({
-  amount: money,
-  sourceAccount: bankAccountSchema,
-  // true = keep repayments, shorten term; false = lower repayments, keep term
-  reduceTerm: z.boolean().default(false),
-})
+// ---- Permanent Principal Reduction (multi-step form) ----
+const principalReduction = baseSchema
+  .extend({
+    borrowers: z.array(borrowerSchema).min(1).max(4),
+    amount: money,
+    reason: z.string().min(1, 'A reason is required').max(1000),
+    acknowledgement: z.object({
+      accepted: z.literal(true, {
+        errorMap: () => ({ message: 'You must accept the acknowledgement' }),
+      }),
+    }),
+    declaration: z.object({
+      agreed: z.literal(true, {
+        errorMap: () => ({ message: 'You must accept the declaration' }),
+      }),
+    }),
+    signatures: z.array(signatureSchema).min(1).max(4),
+    audit: z
+      .object({
+        userAgent: z.string().optional(),
+        platform: z.string().optional(),
+        timezone: z.string().optional(),
+        capturedAt: z.string().optional(),
+      })
+      .optional(),
+  })
+  .refine((d) => d.signatures.length === d.borrowers.length, {
+    message: 'Every borrower must sign',
+    path: ['signatures'],
+  })
 
 // ---- Product Switch Request (multi-step form) ----
 const productSwitch = baseSchema
