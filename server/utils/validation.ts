@@ -159,15 +159,30 @@ const linkedAccount = baseSchema
     },
   )
 
+// ---- Repayment Change Request (multi-step form) ----
 const repaymentChange = baseSchema
   .extend({
-    newAmount: money.optional(),
-    newFrequency: frequency.optional(),
-    effectiveDate: z.coerce.date(),
+    borrowers: z.array(borrowerSchema).min(1).max(4),
+    frequency,
+    amount: money,
+    declaration: z.object({
+      agreed: z.literal(true, {
+        errorMap: () => ({ message: 'You must accept the declaration' }),
+      }),
+    }),
+    signatures: z.array(signatureSchema).min(1).max(4),
+    audit: z
+      .object({
+        userAgent: z.string().optional(),
+        platform: z.string().optional(),
+        timezone: z.string().optional(),
+        capturedAt: z.string().optional(),
+      })
+      .optional(),
   })
-  .refine((d) => d.newAmount !== undefined || d.newFrequency !== undefined, {
-    message: 'Provide a new amount and/or a new frequency',
-    path: ['newAmount'],
+  .refine((d) => d.signatures.length === d.borrowers.length, {
+    message: 'Every borrower must sign',
+    path: ['signatures'],
   })
 
 const redraw = baseSchema.extend({

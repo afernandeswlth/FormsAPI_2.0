@@ -24,13 +24,17 @@ function buildReference(type: RequestType): string {
     'principal-reduction': 'PR',
     'product-switch': 'PS',
   }
-  // Linked Account Nomination uses the LAN-YYYY-NNNNNN scheme.
-  if (type === 'linked-account') {
+  // Some forms use a YEAR-sequence scheme (e.g. LAN-2025-000123).
+  const yearScheme: Partial<Record<RequestType, string>> = {
+    'linked-account': 'LAN',
+    'repayment-change': 'RCR',
+  }
+  if (yearScheme[type]) {
     const year = new Date().getFullYear()
     const seq = (parseInt(randomUUID().replace(/\D/g, '').slice(0, 6) || '0', 10) % 1_000_000)
       .toString()
       .padStart(6, '0')
-    return `LAN-${year}-${seq}`
+    return `${yearScheme[type]}-${year}-${seq}`
   }
   const suffix = randomUUID().replace(/-/g, '').slice(0, 6).toUpperCase()
   return `WLTH-${prefix[type]}-${suffix}`
