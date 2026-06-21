@@ -45,13 +45,64 @@ const baseSchema = z.object({
   loanAccountNumber,
 })
 
-const directDebit = baseSchema.extend({
-  action: z.enum(['setup', 'amend']),
-  bankAccount: bankAccountSchema,
-  amount: money,
-  frequency,
-  startDate: z.coerce.date(),
+// ---- Direct Debit Request (multi-step form) ----
+const borrowerSchema = z.object({
+  firstName: z.string().min(1, 'First name is required'),
+  lastName: z.string().min(1, 'Last name is required'),
+  mobile: z.string().min(6, 'A valid mobile number is required'),
+  email: z.string().email('A valid email is required'),
 })
+
+const linkedAccountSchema = z.object({
+  financialInstitution: z.string().min(1, 'Financial institution is required'),
+  branch: z.string().min(1, 'Branch is required'),
+  accountName: z.string().min(1, 'Account name is required'),
+  bsb,
+  accountNumber,
+})
+
+const signatureSchema = z.object({
+  borrowerIndex: z.number().int().min(0),
+  // PNG data URL produced by the signature canvas
+  image: z.string().regex(/^data:image\/png;base64,/, 'A signature is required'),
+  signedAt: z.string(),
+})
+
+const directDebit = baseSchema
+  .extend({
+    borrowers: z.array(borrowerSchema).min(1).max(4),
+    comments: z.string().max(1000).optional(),
+    linkedAccounts: z.array(linkedAccountSchema).min(1).max(4),
+    repayment: z
+      .object({
+        frequency,
+        amountType: z.enum(['minimum', 'other']),
+        amount: money.optional(),
+      })
+      .refine((r) => r.amountType !== 'other' || r.amount !== undefined, {
+        message: 'Enter the repayment amount',
+        path: ['amount'],
+      }),
+    declaration: z.object({
+      agreed: z.literal(true, {
+        errorMap: () => ({ message: 'You must accept the agreement' }),
+      }),
+    }),
+    signatures: z.array(signatureSchema).min(1).max(4),
+    audit: z
+      .object({
+        userAgent: z.string().optional(),
+        platform: z.string().optional(),
+        timezone: z.string().optional(),
+        capturedAt: z.string().optional(),
+      })
+      .optional(),
+  })
+  // Every borrower must have signed.
+  .refine((d) => d.signatures.length === d.borrowers.length, {
+    message: 'Every borrower must sign',
+    path: ['signatures'],
+  })
 
 const linkedAccount = baseSchema.extend({
   action: z.enum(['link', 'update']),

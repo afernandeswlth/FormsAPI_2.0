@@ -1,4 +1,10 @@
-import { createError, readBody, setResponseStatus } from 'h3'
+import {
+  createError,
+  getRequestHeader,
+  getRequestIP,
+  readBody,
+  setResponseStatus,
+} from 'h3'
 import { getRequestType } from '~~/server/utils/guards'
 import { bodySchemas } from '~~/server/utils/validation'
 import { createRequest } from '~~/server/utils/store'
@@ -20,7 +26,17 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const record = createRequest(type, parsed.data as never)
+  // Server-captured audit metadata (authoritative IP, not client-supplied).
+  const serverAudit = {
+    ip: getRequestIP(event, { xForwardedFor: true }) ?? null,
+    userAgent: getRequestHeader(event, 'user-agent') ?? null,
+    receivedAt: new Date().toISOString(),
+  }
+
+  const record = createRequest(type, {
+    ...(parsed.data as Record<string, unknown>),
+    serverAudit,
+  } as never)
   setResponseStatus(event, 201)
   return record
 })
