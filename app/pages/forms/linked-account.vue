@@ -42,11 +42,15 @@ const signatures = ref<string[]>([''])
 const externalCount = computed(
   () => linkedAccounts.value.filter((a) => a.accountType === 'external').length,
 )
-const attachmentHint = computed(() =>
-  externalCount.value > 0
-    ? `A bank statement is required for each external account (${externalCount.value} required), and optional for WLTH loan/offset accounts. PDF or image, up to 10MB each.`
-    : 'A bank statement is optional for WLTH loan/offset accounts. PDF or image, up to 10MB each.',
+const attachmentHint = computed(
+  () =>
+    `A bank statement is required for each external account (${externalCount.value} required). WLTH loan/offset accounts do not require one. PDF or image, up to 10MB each.`,
 )
+
+// If there are no external accounts, no statement is required — drop any files.
+watch(externalCount, (n) => {
+  if (n === 0 && attachments.value.length) attachments.value = []
+})
 
 // Keep one signature slot per borrower.
 watch(borrowerCount, (n) => {
@@ -230,6 +234,7 @@ function downloadCopy() {
           v-model:accounts="linkedAccounts"
         >
           <AttachmentsField
+            v-if="externalCount > 0"
             v-model="attachments"
             title="Bank Statements"
             :required-count="externalCount"
