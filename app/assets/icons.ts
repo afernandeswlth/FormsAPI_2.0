@@ -67,4 +67,15 @@ export const icons: Record<string, string> = {
   ),
 
   fallback: stroke('<circle cx="12" cy="12" r="8"/>'),
+
+  // ---- File upload ----
+  upload: stroke(
+    '<path d="M12 16 V4"/><path d="M8 8 L12 4 L16 8"/><path d="M4 16 v2 a2 2 0 0 0 2 2 h12 a2 2 0 0 0 2-2 v-2"/>',
+  ),
+  fileDoc: stroke(
+    '<path d="M7 3 H14 L19 8 V20 a1 1 0 0 1-1 1 H7 a1 1 0 0 1-1-1 V4 a1 1 0 0 1 1-1 Z"/><path d="M14 3 V8 H19"/>',
+  ),
+  trash: stroke(
+    '<path d="M4 7 H20"/><path d="M9 7 V5 a1 1 0 0 1 1-1 h4 a1 1 0 0 1 1 1 V7"/><path d="M6 7 l1 13 a1 1 0 0 0 1 1 h8 a1 1 0 0 0 1-1 l1-13"/>',
+  ),
 }

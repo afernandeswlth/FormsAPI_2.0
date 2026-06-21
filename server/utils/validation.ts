@@ -61,6 +61,14 @@ const linkedAccountSchema = z.object({
   accountNumber,
 })
 
+const attachmentSchema = z.object({
+  name: z.string().min(1),
+  type: z.string(),
+  size: z.number().int().nonnegative().max(10 * 1024 * 1024, 'File exceeds 10MB'),
+  // base64 data URL (PDF or image)
+  content: z.string().regex(/^data:.+;base64,/, 'Invalid file content'),
+})
+
 const signatureSchema = z.object({
   borrowerIndex: z.number().int().min(0),
   // PNG data URL produced by the signature canvas
@@ -73,6 +81,10 @@ const directDebit = baseSchema
     borrowers: z.array(borrowerSchema).min(1).max(4),
     comments: z.string().max(1000).optional(),
     linkedAccounts: z.array(linkedAccountSchema).min(1).max(4),
+    attachments: z
+      .array(attachmentSchema)
+      .min(1, 'A bank statement attachment is required')
+      .max(10),
     repayment: z
       .object({
         frequency,

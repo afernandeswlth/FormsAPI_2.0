@@ -45,6 +45,60 @@ function blankAccount(): LinkedAccount {
 }
 watch(accountCount, (n) => resize(linkedAccounts, n, blankAccount))
 
+// ---- Step 3: Bank statement attachment(s) ----
+type Attachment = { name: string; type: string; size: number; content: string }
+const attachments = ref<Attachment[]>([])
+const attachmentError = ref('')
+const dragging = ref(false)
+const MAX_FILE_BYTES = 10 * 1024 * 1024 // 10MB
+const ACCEPTED = ['application/pdf', 'image/png', 'image/jpeg', 'image/heic', 'image/webp']
+
+function readAsDataURL(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result as string)
+    reader.onerror = () => reject(reader.error)
+    reader.readAsDataURL(file)
+  })
+}
+
+async function addFiles(files: FileList | File[]) {
+  attachmentError.value = ''
+  for (const f of Array.from(files)) {
+    if (f.size > MAX_FILE_BYTES) {
+      attachmentError.value = `${f.name} is larger than 10MB.`
+      continue
+    }
+    if (f.type && !ACCEPTED.includes(f.type)) {
+      attachmentError.value = `${f.name} is not a supported file type (PDF or image).`
+      continue
+    }
+    const content = await readAsDataURL(f)
+    attachments.value.push({ name: f.name, type: f.type, size: f.size, content })
+  }
+}
+
+async function onFileInput(e: Event) {
+  const input = e.target as HTMLInputElement
+  if (input.files) await addFiles(input.files)
+  input.value = '' // allow re-selecting the same file
+}
+
+async function onDrop(e: DragEvent) {
+  dragging.value = false
+  if (e.dataTransfer?.files) await addFiles(e.dataTransfer.files)
+}
+
+function removeAttachment(i: number) {
+  attachments.value.splice(i, 1)
+}
+
+function formatSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+}
+
 // ---- Step 4: Repayments ----
 const repayment = ref<{
   frequency: 'weekly' | 'fortnightly' | 'monthly' | ''
@@ -84,6 +138,7 @@ function validateStep(i: number): string[] {
       if (!/^\d{3}-?\d{3}$/.test(a.bsb)) e.push(`Linked Account ${idx + 1}: BSB must be 6 digits`)
       if (!/^\d{5,10}$/.test(a.accountNumber)) e.push(`Linked Account ${idx + 1}: account number 5–10 digits`)
     })
+    if (!attachments.value.length) e.push('Attach at least one bank statement')
   } else if (i === 3) {
     if (!repayment.value.frequency) e.push('Select a payment frequency')
     if (!repayment.value.amountType) e.push('Select a repayment amount option')
@@ -143,6 +198,7 @@ async function submit() {
     borrowers: borrowers.value,
     comments: loan.value.comments || undefined,
     linkedAccounts: linkedAccounts.value,
+    attachments: attachments.value,
     repayment: {
       frequency: repayment.value.frequency,
       amountType: repayment.value.amountType,
@@ -350,6 +406,53 @@ By signing this request you acknowledge that you have read and understood this D
               </label>
             </div>
           </div>
+
+          <div class="uploads">
+            <h3>Bank Statement <span class="req">*</span></h3>
+            <p class="muted small">
+              Please attach a recent bank statement for the linked account(s).
+              PDF or image, up to 10MB each. This is required.
+            </p>
+
+            <label
+              class="dropzone"
+              :class="{ 'is-drag': dragging }"
+              @dragover.prevent="dragging = true"
+              @dragleave.prevent="dragging = false"
+              @drop.prevent="onDrop"
+            >
+              <input
+                type="file"
+                accept=".pdf,image/*"
+                multiple
+                class="dropzone__input"
+                @change="onFileInput"
+              />
+              <span class="dropzone__icon" v-html="icons.upload" />
+              <span class="dropzone__text">
+                <strong>Add file</strong> or drag and drop
+              </span>
+            </label>
+
+            <ul v-if="attachments.length" class="files">
+              <li v-for="(a, i) in attachments" :key="i" class="file">
+                <span class="file__icon" v-html="icons.fileDoc" />
+                <span class="file__meta">
+                  <strong>{{ a.name }}</strong>
+                  <em>{{ formatSize(a.size) }}</em>
+                </span>
+                <button
+                  type="button"
+                  class="file__remove"
+                  :aria-label="`Remove ${a.name}`"
+                  v-html="icons.trash"
+                  @click="removeAttachment(i)"
+                />
+              </li>
+            </ul>
+
+            <p v-if="attachmentError" class="file-err">{{ attachmentError }}</p>
+          </div>
         </section>
 
         <!-- STEP 4: REPAYMENTS -->
@@ -425,6 +528,10 @@ By signing this request you acknowledge that you have read and understood this D
             <div v-for="(a, i) in linkedAccounts" :key="i" class="review__row">
               <strong>Account {{ i + 1 }}</strong>
               <span>{{ a.accountName }} — {{ a.financialInstitution }} · BSB {{ a.bsb }} · {{ a.accountNumber }}</span>
+            </div>
+            <div class="review__row">
+              <strong>Bank statement</strong>
+              <span>{{ attachments.map((a) => a.name).join(', ') || '—' }}</span>
             </div>
           </div>
 
@@ -701,6 +808,126 @@ By signing this request you acknowledge that you have read and understood this D
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 18px;
+}
+
+/* Uploads */
+.uploads {
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+}
+.uploads h3 {
+  margin-top: 0;
+}
+.req {
+  color: #d92d20;
+}
+.dropzone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 96px;
+  border: 2px dashed #cbd5e1;
+  border-radius: 16px;
+  background: #fbfcfe;
+  cursor: pointer;
+  color: var(--muted);
+  text-align: center;
+  padding: 16px;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.dropzone:hover,
+.dropzone.is-drag {
+  border-color: var(--blue);
+  background: rgba(20, 69, 199, 0.04);
+}
+.dropzone__input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  overflow: hidden;
+}
+.dropzone__icon {
+  color: var(--blue);
+}
+.dropzone__icon :deep(svg) {
+  width: 26px;
+  height: 26px;
+}
+.dropzone__text strong {
+  color: var(--blue);
+}
+.files {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.file {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border: 1.5px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+}
+.file__icon {
+  color: var(--blue);
+  flex-shrink: 0;
+}
+.file__icon :deep(svg) {
+  width: 24px;
+  height: 24px;
+}
+.file__meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+.file__meta strong {
+  font-size: 0.92rem;
+  color: var(--navy);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.file__meta em {
+  font-style: normal;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.file__remove {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #94a3b8;
+  padding: 8px;
+  min-width: 44px;
+  min-height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+}
+.file__remove:hover {
+  color: #d92d20;
+  background: #fef2f2;
+}
+.file__remove :deep(svg) {
+  width: 20px;
+  height: 20px;
+}
+.file-err {
+  color: #b91c1c;
+  font-size: 0.85rem;
+  margin: 12px 0 0;
 }
 .field {
   display: flex;
