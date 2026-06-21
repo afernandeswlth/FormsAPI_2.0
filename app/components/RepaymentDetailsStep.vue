@@ -2,6 +2,7 @@
 const frequency = defineModel<'' | 'weekly' | 'fortnightly' | 'monthly'>('frequency', {
   required: true,
 })
+const amountType = defineModel<'' | 'minimum' | 'fixed'>('amountType', { required: true })
 const amount = defineModel<number | null>('amount', { required: true })
 
 const freqOptions = [
@@ -15,7 +16,15 @@ const formattedAmount = computed(() =>
     ? new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(amount.value)
     : '',
 )
-const showPreview = computed(() => !!frequency.value && !!formattedAmount.value)
+const showPreview = computed(
+  () =>
+    !!frequency.value &&
+    (amountType.value === 'minimum' ||
+      (amountType.value === 'fixed' && !!formattedAmount.value)),
+)
+const previewAmount = computed(() =>
+  amountType.value === 'minimum' ? 'Minimum amount' : formattedAmount.value,
+)
 </script>
 
 <template>
@@ -38,7 +47,18 @@ const showPreview = computed(() => !!frequency.value && !!formattedAmount.value)
 
     <h3>Repayment Amount</h3>
     <p class="muted">What would you like your new repayment amount to be?</p>
-    <div class="amount">
+    <div class="radios">
+      <label class="radio" :class="{ 'is-selected': amountType === 'minimum' }">
+        <input v-model="amountType" type="radio" value="minimum" />
+        <span>Minimum amount</span>
+      </label>
+      <label class="radio" :class="{ 'is-selected': amountType === 'fixed' }">
+        <input v-model="amountType" type="radio" value="fixed" />
+        <span>Fixed amount</span>
+      </label>
+    </div>
+
+    <div v-if="amountType === 'fixed'" class="amount">
       <span class="amount__sign">$</span>
       <input
         v-model.number="amount"
@@ -57,7 +77,7 @@ const showPreview = computed(() => !!frequency.value && !!formattedAmount.value)
         <span>Frequency</span><strong class="cap">{{ frequency }}</strong>
       </div>
       <div class="preview__row">
-        <span>Repayment</span><strong>{{ formattedAmount }}</strong>
+        <span>Repayment</span><strong>{{ previewAmount }}</strong>
       </div>
     </div>
 
@@ -76,6 +96,7 @@ const showPreview = computed(() => !!frequency.value && !!formattedAmount.value)
   border-radius: 12px;
   overflow: hidden;
   max-width: 320px;
+  margin-top: 16px;
 }
 .amount:focus-within {
   border-color: var(--blue);

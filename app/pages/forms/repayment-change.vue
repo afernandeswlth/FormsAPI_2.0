@@ -18,6 +18,7 @@ const borrowerCount = ref(1)
 const borrowers = ref<Borrower[]>([{ firstName: '', lastName: '', mobile: '', email: '' }])
 const loan = ref({ accountNumber: '', comments: '' })
 const frequency = ref<'' | 'weekly' | 'fortnightly' | 'monthly'>('')
+const amountType = ref<'' | 'minimum' | 'fixed'>('')
 const amount = ref<number | null>(null)
 const agreed = ref(false)
 const signatures = ref<string[]>([''])
@@ -54,7 +55,9 @@ function validateStep(i: number): string[] {
     if (!loan.value.accountNumber.trim()) e.push('Loan account number is required')
   } else if (i === 2) {
     if (!frequency.value) e.push('Select a payment frequency')
-    if (!(Number(amount.value) > 0)) e.push('Enter your new repayment amount')
+    if (!amountType.value) e.push('Select a repayment amount option')
+    if (amountType.value === 'fixed' && !(Number(amount.value) > 0))
+      e.push('Enter your fixed repayment amount')
   } else if (i === 4) {
     if (!agreed.value) e.push('You must accept the declaration')
     signatures.value.forEach((s, idx) => {
@@ -108,7 +111,8 @@ async function submit() {
     loanAccountNumber: loan.value.accountNumber,
     borrowers: borrowers.value,
     frequency: frequency.value,
-    amount: Number(amount.value),
+    amountType: amountType.value,
+    amount: amountType.value === 'fixed' ? Number(amount.value) : undefined,
     declaration: { agreed: agreed.value },
     signatures: signatures.value.map((image, borrowerIndex) => ({
       borrowerIndex,
@@ -151,7 +155,7 @@ function downloadCopy() {
     '',
     'Requested change:',
     `  Frequency: ${frequency.value}`,
-    `  Repayment amount: ${formattedAmount.value}`,
+    `  Repayment amount: ${amountType.value === 'minimum' ? 'Minimum amount' : formattedAmount.value}`,
     '',
     'Signatures recorded on file for every borrower.',
   ]
@@ -197,6 +201,7 @@ function downloadCopy() {
         <RepaymentDetailsStep
           v-if="step === 2"
           v-model:frequency="frequency"
+          v-model:amount-type="amountType"
           v-model:amount="amount"
         />
 
@@ -220,7 +225,8 @@ function downloadCopy() {
               <strong>Frequency</strong><span class="cap">{{ frequency }}</span>
             </div>
             <div class="review__row">
-              <strong>Repayment Amount</strong><span>{{ formattedAmount }}</span>
+              <strong>Repayment Amount</strong>
+              <span>{{ amountType === 'minimum' ? 'Minimum amount' : formattedAmount }}</span>
             </div>
           </ReviewCard>
         </div>

@@ -164,7 +164,8 @@ const repaymentChange = baseSchema
   .extend({
     borrowers: z.array(borrowerSchema).min(1).max(4),
     frequency,
-    amount: money,
+    amountType: z.enum(['minimum', 'fixed']),
+    amount: money.optional(),
     declaration: z.object({
       agreed: z.literal(true, {
         errorMap: () => ({ message: 'You must accept the declaration' }),
@@ -179,6 +180,10 @@ const repaymentChange = baseSchema
         capturedAt: z.string().optional(),
       })
       .optional(),
+  })
+  .refine((d) => d.amountType !== 'fixed' || d.amount !== undefined, {
+    message: 'Enter the fixed repayment amount',
+    path: ['amount'],
   })
   .refine((d) => d.signatures.length === d.borrowers.length, {
     message: 'Every borrower must sign',
