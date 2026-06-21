@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Borrower } from '../../components/BorrowersStep.vue'
 import type { LinkedAccount } from '../../components/LinkedAccountsStep.vue'
+import type { Attachment } from '../../components/AttachmentsField.vue'
 import { directDebitTerms } from '../../assets/terms'
 
 useHead({ title: 'Linked Account Nomination — WLTH Client Hub' })
@@ -23,10 +24,29 @@ const borrowers = ref<Borrower[]>([
 const loan = ref({ accountNumber: '', comments: '' })
 const accountCount = ref(1)
 const linkedAccounts = ref<LinkedAccount[]>([
-  { financialInstitution: '', branch: '', accountName: '', bsb: '', accountNumber: '' },
+  {
+    accountType: 'external',
+    financialInstitution: '',
+    branch: '',
+    accountName: '',
+    bsb: '',
+    accountNumber: '',
+  },
 ])
+const attachments = ref<Attachment[]>([])
 const agreed = ref(false)
 const signatures = ref<string[]>([''])
+
+// A bank statement is mandatory for each external account, optional for WLTH
+// loan/offset accounts.
+const externalCount = computed(
+  () => linkedAccounts.value.filter((a) => a.accountType === 'external').length,
+)
+const attachmentHint = computed(() =>
+  externalCount.value > 0
+    ? `A bank statement is required for each external account (${externalCount.value} required), and optional for WLTH loan/offset accounts. PDF or image, up to 10MB each.`
+    : 'A bank statement is optional for WLTH loan/offset accounts. PDF or image, up to 10MB each.',
+)
 
 // Keep one signature slot per borrower.
 watch(borrowerCount, (n) => {
@@ -54,6 +74,10 @@ function validateStep(i: number): string[] {
       if (!/^\d{3}-?\d{3}$/.test(a.bsb)) e.push(`Linked Account ${idx + 1}: BSB must be 6 digits`)
       if (!/^\d{5,10}$/.test(a.accountNumber)) e.push(`Linked Account ${idx + 1}: account number 5–10 digits`)
     })
+    if (attachments.value.length < externalCount.value)
+      e.push(
+        `Attach a bank statement for each external account (${externalCount.value} required)`,
+      )
   } else if (i === 4) {
     if (!agreed.value) e.push('You must accept the Direct Debit Terms and Conditions')
     signatures.value.forEach((s, idx) => {
@@ -108,6 +132,7 @@ async function submit() {
     borrowers: borrowers.value,
     comments: loan.value.comments || undefined,
     linkedAccounts: linkedAccounts.value,
+    attachments: attachments.value,
     declaration: { agreed: agreed.value },
     signatures: signatures.value.map((image, borrowerIndex) => ({
       borrowerIndex,
@@ -203,7 +228,14 @@ function downloadCopy() {
           v-if="step === 2"
           v-model:count="accountCount"
           v-model:accounts="linkedAccounts"
-        />
+        >
+          <AttachmentsField
+            v-model="attachments"
+            title="Bank Statements"
+            :required-count="externalCount"
+            :hint="attachmentHint"
+          />
+        </LinkedAccountsStep>
 
         <!-- Review -->
         <div v-if="step === 3" class="stack">
@@ -226,7 +258,14 @@ function downloadCopy() {
           <ReviewCard title="Linked Accounts" @edit="goTo(2)">
             <div v-for="(a, i) in linkedAccounts" :key="i" class="review__row">
               <strong>Account {{ i + 1 }}</strong>
-              <span>{{ a.accountName }} — {{ a.financialInstitution }} · BSB {{ a.bsb }} · {{ a.accountNumber }}</span>
+              <span>
+                {{ a.accountType === 'wlth' ? 'WLTH' : 'External' }} ·
+                {{ a.accountName }} — {{ a.financialInstitution }} · BSB {{ a.bsb }} · {{ a.accountNumber }}
+              </span>
+            </div>
+            <div class="review__row">
+              <strong>Bank statements</strong>
+              <span>{{ attachments.map((a) => a.name).join(', ') || 'None attached' }}</span>
             </div>
           </ReviewCard>
         </div>

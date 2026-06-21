@@ -54,6 +54,7 @@ const borrowerSchema = z.object({
 })
 
 const linkedAccountSchema = z.object({
+  accountType: z.enum(['external', 'wlth']).default('external'),
   financialInstitution: z.string().min(1, 'Financial institution is required'),
   branch: z.string().optional(),
   accountName: z.string().min(1, 'Account name is required'),
@@ -127,6 +128,7 @@ const linkedAccount = baseSchema
     borrowers: z.array(borrowerSchema).min(1).max(4),
     comments: z.string().max(1000).optional(),
     linkedAccounts: z.array(linkedAccountSchema).min(1).max(4),
+    attachments: z.array(attachmentSchema).max(10).default([]),
     declaration: z.object({
       agreed: z.literal(true, {
         errorMap: () => ({ message: 'You must accept the terms and conditions' }),
@@ -146,6 +148,16 @@ const linkedAccount = baseSchema
     message: 'Every borrower must sign',
     path: ['signatures'],
   })
+  // A bank statement is required for each external account (WLTH accounts exempt).
+  .refine(
+    (d) =>
+      d.attachments.length >=
+      d.linkedAccounts.filter((a) => a.accountType === 'external').length,
+    {
+      message: 'A bank statement is required for each external account',
+      path: ['attachments'],
+    },
+  )
 
 const repaymentChange = baseSchema
   .extend({

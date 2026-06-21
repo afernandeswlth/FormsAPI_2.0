@@ -1,5 +1,6 @@
 <script setup lang="ts">
 export type LinkedAccount = {
+  accountType: 'external' | 'wlth'
   financialInstitution: string
   branch: string
   accountName: string
@@ -17,6 +18,7 @@ withDefaults(
 
 function blank(): LinkedAccount {
   return {
+    accountType: 'external',
     financialInstitution: '',
     branch: '',
     accountName: '',
@@ -95,9 +97,22 @@ function onAccountNumber(a: LinkedAccount, e: Event) {
         {{ a.accountNumber.slice(-4) }}
       </div>
 
-      <div v-show="expanded[i]" class="grid2">
-        <label class="field">
-          <span>Financial Institution <span class="req">*</span></span>
+      <div v-show="expanded[i]">
+        <div class="acct__type">
+          <span class="acct__type-label">Account type</span>
+          <label class="radio" :class="{ 'is-selected': a.accountType === 'external' }">
+            <input v-model="a.accountType" type="radio" value="external" />
+            <span>External bank account</span>
+          </label>
+          <label class="radio" :class="{ 'is-selected': a.accountType === 'wlth' }">
+            <input v-model="a.accountType" type="radio" value="wlth" />
+            <span>WLTH loan or offset account</span>
+          </label>
+        </div>
+
+        <div class="grid2">
+          <label class="field">
+            <span>Financial Institution <span class="req">*</span></span>
           <input v-model="a.financialInstitution" type="text" />
         </label>
         <label class="field">
@@ -127,7 +142,8 @@ function onAccountNumber(a: LinkedAccount, e: Event) {
             inputmode="numeric"
             @input="onAccountNumber(a, $event)"
           />
-        </label>
+          </label>
+        </div>
       </div>
     </div>
 
@@ -138,5 +154,22 @@ function onAccountNumber(a: LinkedAccount, e: Event) {
 <style scoped>
 .req {
   color: #d92d20;
+}
+.acct__type {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.acct__type-label {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--navy);
+  margin-right: 4px;
+}
+.acct__type .radio {
+  min-height: 48px;
+  flex: 0 0 auto;
 }
 </style>
