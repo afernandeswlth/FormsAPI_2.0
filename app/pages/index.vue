@@ -12,6 +12,7 @@ const formRoutes: Record<string, string> = {
   'direct-debit': '/forms/direct-debit',
   'linked-account': '/forms/linked-account',
   'repayment-change': '/forms/repayment-change',
+  'redraw': '/forms/redraw',
 }
 </script>
 

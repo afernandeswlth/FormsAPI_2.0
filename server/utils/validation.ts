@@ -190,11 +190,44 @@ const repaymentChange = baseSchema
     path: ['signatures'],
   })
 
-const redraw = baseSchema.extend({
-  amount: money,
-  disbursementAccount: bankAccountSchema,
-  reason: z.string().max(500).optional(),
-})
+// ---- Redraw Request (multi-step form) ----
+const redraw = baseSchema
+  .extend({
+    borrowers: z.array(borrowerSchema).min(1).max(4),
+    amount: money,
+    destination: bankAccountSchema,
+    purpose: z.enum(['property', 'construction', 'third-party', 'personal', 'other']),
+    reason: z.string().min(1, 'A reason is required').max(1000),
+    attachments: z.array(attachmentSchema).max(20).default([]),
+    declaration: z.object({
+      agreed: z.literal(true, {
+        errorMap: () => ({ message: 'You must accept the declaration' }),
+      }),
+    }),
+    signatures: z.array(signatureSchema).min(1).max(4),
+    audit: z
+      .object({
+        userAgent: z.string().optional(),
+        platform: z.string().optional(),
+        timezone: z.string().optional(),
+        capturedAt: z.string().optional(),
+      })
+      .optional(),
+  })
+  .refine((d) => d.signatures.length === d.borrowers.length, {
+    message: 'Every borrower must sign',
+    path: ['signatures'],
+  })
+  // Supporting evidence required over $100k or for proof-of-use purposes.
+  .refine(
+    (d) =>
+      !(d.amount > 100000 || ['property', 'construction', 'personal'].includes(d.purpose)) ||
+      d.attachments.length >= 1,
+    {
+      message: 'Supporting documentation is required for this redraw',
+      path: ['attachments'],
+    },
+  )
 
 const openOffset = baseSchema.extend({
   accountName: z.string().min(1, 'Account name is required'),

@@ -28,6 +28,7 @@ function buildReference(type: RequestType): string {
   const yearScheme: Partial<Record<RequestType, string>> = {
     'linked-account': 'LAN',
     'repayment-change': 'RCR',
+    'redraw': 'RRR',
   }
   if (yearScheme[type]) {
     const year = new Date().getFullYear()

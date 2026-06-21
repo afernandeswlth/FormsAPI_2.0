@@ -13,6 +13,10 @@ const props = withDefaults(
     requiredCount?: number
     accept?: string
     maxBytes?: number
+    /** Larger aqua drop zone (used by Redraw). */
+    large?: boolean
+    /** Drop the top divider when used as the sole content of a card. */
+    flush?: boolean
   }>(),
   {
     title: 'Attachments',
@@ -20,12 +24,22 @@ const props = withDefaults(
     requiredCount: 0,
     accept: '.pdf,image/*',
     maxBytes: 10 * 1024 * 1024,
+    large: false,
+    flush: false,
   },
 )
 
 const error = ref('')
 const dragging = ref(false)
-const ACCEPTED = ['application/pdf', 'image/png', 'image/jpeg', 'image/heic', 'image/webp']
+const ACCEPTED = [
+  'application/pdf',
+  'image/png',
+  'image/jpeg',
+  'image/heic',
+  'image/webp',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+]
 
 const met = computed(() => files.value.length >= props.requiredCount)
 
@@ -75,7 +89,7 @@ function formatSize(bytes: number) {
 </script>
 
 <template>
-  <div class="uploads">
+  <div class="uploads" :class="{ 'uploads--flush': flush }">
     <h3>
       {{ title }}
       <span v-if="requiredCount > 0" class="req">*</span>
@@ -87,7 +101,7 @@ function formatSize(bytes: number) {
 
     <label
       class="dropzone"
-      :class="{ 'is-drag': dragging }"
+      :class="{ 'is-drag': dragging, 'dropzone--lg': large }"
       @dragover.prevent="dragging = true"
       @dragleave.prevent="dragging = false"
       @drop.prevent="onDrop"

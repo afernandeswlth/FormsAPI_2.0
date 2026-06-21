@@ -319,6 +319,15 @@
 .uploads h3 {
   margin-top: 0;
 }
+.uploads--flush {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+.dropzone--lg {
+  min-height: 180px;
+  border-color: var(--aqua);
+}
 .upload-count {
   font-size: 0.8rem;
   font-weight: 600;
