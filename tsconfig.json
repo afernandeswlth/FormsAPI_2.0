@@ -1,0 +1,4 @@
+{
+  // Nuxt generates the real config; this just references it.
+  "extends": "./.nuxt/tsconfig.json"
+}
