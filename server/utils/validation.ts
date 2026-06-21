@@ -55,7 +55,7 @@ const borrowerSchema = z.object({
 
 const linkedAccountSchema = z.object({
   financialInstitution: z.string().min(1, 'Financial institution is required'),
-  branch: z.string().min(1, 'Branch is required'),
+  branch: z.string().optional(),
   accountName: z.string().min(1, 'Account name is required'),
   bsb,
   accountNumber,
@@ -114,6 +114,11 @@ const directDebit = baseSchema
   .refine((d) => d.signatures.length === d.borrowers.length, {
     message: 'Every borrower must sign',
     path: ['signatures'],
+  })
+  // One bank statement is required per linked account.
+  .refine((d) => d.attachments.length >= d.linkedAccounts.length, {
+    message: 'A bank statement is required for each linked account',
+    path: ['attachments'],
   })
 
 const linkedAccount = baseSchema.extend({

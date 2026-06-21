@@ -133,12 +133,16 @@ function validateStep(i: number): string[] {
     if (!loan.value.accountNumber.trim()) e.push('Loan account number is required')
   } else if (i === 2) {
     linkedAccounts.value.forEach((a, idx) => {
-      if (!a.financialInstitution || !a.branch || !a.accountName)
-        e.push(`Linked Account ${idx + 1}: all details are required`)
+      if (!a.financialInstitution || !a.accountName)
+        e.push(`Linked Account ${idx + 1}: financial institution and account name are required`)
       if (!/^\d{3}-?\d{3}$/.test(a.bsb)) e.push(`Linked Account ${idx + 1}: BSB must be 6 digits`)
       if (!/^\d{5,10}$/.test(a.accountNumber)) e.push(`Linked Account ${idx + 1}: account number 5–10 digits`)
     })
-    if (!attachments.value.length) e.push('Attach at least one bank statement')
+    const need = linkedAccounts.value.length
+    if (attachments.value.length < need)
+      e.push(
+        `Attach at least ${need} bank statement${need > 1 ? 's' : ''} (one per linked account)`,
+      )
   } else if (i === 3) {
     if (!repayment.value.frequency) e.push('Select a payment frequency')
     if (!repayment.value.amountType) e.push('Select a repayment amount option')
@@ -389,7 +393,7 @@ By signing this request you acknowledge that you have read and understood this D
                 <input v-model="a.financialInstitution" type="text" />
               </label>
               <label class="field">
-                <span>Branch</span>
+                <span>Branch <em>(optional)</em></span>
                 <input v-model="a.branch" type="text" />
               </label>
               <label class="field field--full">
@@ -408,10 +412,16 @@ By signing this request you acknowledge that you have read and understood this D
           </div>
 
           <div class="uploads">
-            <h3>Bank Statement <span class="req">*</span></h3>
+            <h3>
+              Bank Statements <span class="req">*</span>
+              <span class="upload-count" :class="{ 'is-met': attachments.length >= linkedAccounts.length }">
+                {{ attachments.length }} / {{ linkedAccounts.length }} added
+              </span>
+            </h3>
             <p class="muted small">
-              Please attach a recent bank statement for the linked account(s).
-              PDF or image, up to 10MB each. This is required.
+              Please attach a recent bank statement for
+              <strong>each linked account</strong> —
+              {{ linkedAccounts.length }} required. PDF or image, up to 10MB each.
             </p>
 
             <label
@@ -821,6 +831,20 @@ By signing this request you acknowledge that you have read and understood this D
 }
 .req {
   color: #d92d20;
+}
+.upload-count {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+  background: #eef2f6;
+  padding: 3px 10px;
+  border-radius: 999px;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+.upload-count.is-met {
+  color: #067647;
+  background: #e7f6ec;
 }
 .dropzone {
   display: flex;
