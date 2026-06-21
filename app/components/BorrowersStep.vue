@@ -4,18 +4,19 @@ export type Borrower = {
   lastName: string
   mobile: string
   email: string
+  customerNumber?: string
 }
 
 const count = defineModel<number>('count', { required: true })
 const borrowers = defineModel<Borrower[]>('borrowers', { required: true })
 
 withDefaults(
-  defineProps<{ question: string; tileNoun?: string }>(),
-  { tileNoun: '' },
+  defineProps<{ question: string; tileNoun?: string; showCustomerNumber?: boolean }>(),
+  { tileNoun: '', showCustomerNumber: false },
 )
 
 function blank(): Borrower {
-  return { firstName: '', lastName: '', mobile: '', email: '' }
+  return { firstName: '', lastName: '', mobile: '', email: '', customerNumber: '' }
 }
 
 watch(count, (n) => {
@@ -62,6 +63,10 @@ watch(count, (n) => {
         <label class="field">
           <span>Email Address</span>
           <input v-model="b.email" type="email" inputmode="email" autocomplete="email" />
+        </label>
+        <label v-if="showCustomerNumber" class="field field--full">
+          <span>Customer Number</span>
+          <input v-model="b.customerNumber" type="text" inputmode="numeric" />
         </label>
       </div>
     </div>

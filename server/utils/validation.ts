@@ -229,10 +229,33 @@ const redraw = baseSchema
     },
   )
 
-const openOffset = baseSchema.extend({
-  accountName: z.string().min(1, 'Account name is required'),
-  initialDeposit: money.optional(),
+// ---- Open Offset Account (multi-step form) ----
+const offsetBorrowerSchema = borrowerSchema.extend({
+  customerNumber: z.string().min(1, 'Customer number is required'),
 })
+
+const openOffset = baseSchema
+  .extend({
+    borrowers: z.array(offsetBorrowerSchema).min(1).max(4),
+    declaration: z.object({
+      agreed: z.literal(true, {
+        errorMap: () => ({ message: 'You must confirm the declaration' }),
+      }),
+    }),
+    signatures: z.array(signatureSchema).min(1).max(4),
+    audit: z
+      .object({
+        userAgent: z.string().optional(),
+        platform: z.string().optional(),
+        timezone: z.string().optional(),
+        capturedAt: z.string().optional(),
+      })
+      .optional(),
+  })
+  .refine((d) => d.signatures.length === d.borrowers.length, {
+    message: 'Every borrower must sign',
+    path: ['signatures'],
+  })
 
 const principalReduction = baseSchema.extend({
   amount: money,

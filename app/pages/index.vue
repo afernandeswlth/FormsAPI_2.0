@@ -13,6 +13,7 @@ const formRoutes: Record<string, string> = {
   'linked-account': '/forms/linked-account',
   'repayment-change': '/forms/repayment-change',
   'redraw': '/forms/redraw',
+  'open-offset': '/forms/open-offset',
 }
 </script>
 

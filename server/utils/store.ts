@@ -29,6 +29,7 @@ function buildReference(type: RequestType): string {
     'linked-account': 'LAN',
     'repayment-change': 'RCR',
     'redraw': 'RRR',
+    'open-offset': 'OAR',
   }
   if (yearScheme[type]) {
     const year = new Date().getFullYear()
