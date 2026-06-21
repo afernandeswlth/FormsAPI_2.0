@@ -36,6 +36,7 @@ export const icons: Record<string, string> = {
     </svg>`,
 
   arrow: stroke('<path d="M4 12 H19"/><path d="M13 6 L19 12 L13 18"/>'),
+  check: stroke('<circle cx="12" cy="12" r="9"/><path d="M8 12.5 l2.5 2.5 L16 9"/>'),
 
   // ---- Impact band ----
   shield: stroke('<path d="M12 3 L20 6 V11 C20 16 16.5 19.5 12 21 C7.5 19.5 4 16 4 11 V6 Z"/>'),

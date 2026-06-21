@@ -5,6 +5,8 @@ export default defineNuxtConfig({
   future: { compatibilityVersion: 4 },
   devtools: { enabled: true },
 
+  css: ['~/assets/css/forms.css'],
+
   // WLTH brand tokens exposed to the app + runtime
   appConfig: {
     brand: {

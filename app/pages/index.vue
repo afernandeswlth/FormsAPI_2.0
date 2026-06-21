@@ -10,6 +10,7 @@ const heroLoaded = ref(true)
 // Map each request type to its in-app form route (only direct-debit so far).
 const formRoutes: Record<string, string> = {
   'direct-debit': '/forms/direct-debit',
+  'linked-account': '/forms/linked-account',
 }
 </script>
 

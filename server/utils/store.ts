@@ -24,6 +24,14 @@ function buildReference(type: RequestType): string {
     'principal-reduction': 'PR',
     'product-switch': 'PS',
   }
+  // Linked Account Nomination uses the LAN-YYYY-NNNNNN scheme.
+  if (type === 'linked-account') {
+    const year = new Date().getFullYear()
+    const seq = (parseInt(randomUUID().replace(/\D/g, '').slice(0, 6) || '0', 10) % 1_000_000)
+      .toString()
+      .padStart(6, '0')
+    return `LAN-${year}-${seq}`
+  }
   const suffix = randomUUID().replace(/-/g, '').slice(0, 6).toUpperCase()
   return `WLTH-${prefix[type]}-${suffix}`
 }

@@ -121,10 +121,31 @@ const directDebit = baseSchema
     path: ['attachments'],
   })
 
-const linkedAccount = baseSchema.extend({
-  action: z.enum(['link', 'update']),
-  bankAccount: bankAccountSchema,
-})
+// ---- Linked Account Nomination (multi-step form) ----
+const linkedAccount = baseSchema
+  .extend({
+    borrowers: z.array(borrowerSchema).min(1).max(4),
+    comments: z.string().max(1000).optional(),
+    linkedAccounts: z.array(linkedAccountSchema).min(1).max(4),
+    declaration: z.object({
+      agreed: z.literal(true, {
+        errorMap: () => ({ message: 'You must accept the terms and conditions' }),
+      }),
+    }),
+    signatures: z.array(signatureSchema).min(1).max(4),
+    audit: z
+      .object({
+        userAgent: z.string().optional(),
+        platform: z.string().optional(),
+        timezone: z.string().optional(),
+        capturedAt: z.string().optional(),
+      })
+      .optional(),
+  })
+  .refine((d) => d.signatures.length === d.borrowers.length, {
+    message: 'Every borrower must sign',
+    path: ['signatures'],
+  })
 
 const repaymentChange = baseSchema
   .extend({
