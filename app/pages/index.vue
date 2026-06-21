@@ -14,6 +14,7 @@ const formRoutes: Record<string, string> = {
   'repayment-change': '/forms/repayment-change',
   'redraw': '/forms/redraw',
   'open-offset': '/forms/open-offset',
+  'product-switch': '/forms/product-switch',
 }
 </script>
 

@@ -264,11 +264,38 @@ const principalReduction = baseSchema.extend({
   reduceTerm: z.boolean().default(false),
 })
 
-const productSwitch = baseSchema.extend({
-  currentProduct: z.string().min(1, 'Current product is required'),
-  targetProduct: z.string().min(1, 'Target product is required'),
-  reason: z.string().max(500).optional(),
-})
+// ---- Product Switch Request (multi-step form) ----
+const productSwitch = baseSchema
+  .extend({
+    borrowers: z.array(borrowerSchema).min(1).max(4),
+    productType: z.enum(['pi', 'io', 'fixed']),
+    interestRate: z.number().positive().max(100).optional(),
+    term: z.string().optional(),
+    reason: z.string().min(1, 'A reason is required').max(1000),
+    declaration: z.object({
+      agreed: z.literal(true, {
+        errorMap: () => ({ message: 'You must accept the declaration' }),
+      }),
+    }),
+    signatures: z.array(signatureSchema).min(1).max(4),
+    audit: z
+      .object({
+        userAgent: z.string().optional(),
+        platform: z.string().optional(),
+        timezone: z.string().optional(),
+        capturedAt: z.string().optional(),
+      })
+      .optional(),
+  })
+  .refine((d) => d.signatures.length === d.borrowers.length, {
+    message: 'Every borrower must sign',
+    path: ['signatures'],
+  })
+  // Interest Only and Fixed Rate require a term.
+  .refine((d) => !['io', 'fixed'].includes(d.productType) || !!d.term, {
+    message: 'A term is required for this product',
+    path: ['term'],
+  })
 
 export const bodySchemas = {
   'direct-debit': directDebit,

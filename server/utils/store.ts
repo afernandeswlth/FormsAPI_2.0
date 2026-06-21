@@ -30,6 +30,7 @@ function buildReference(type: RequestType): string {
     'repayment-change': 'RCR',
     'redraw': 'RRR',
     'open-offset': 'OAR',
+    'product-switch': 'PSR',
   }
   if (yearScheme[type]) {
     const year = new Date().getFullYear()
