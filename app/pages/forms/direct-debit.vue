@@ -268,19 +268,11 @@ By signing this request you acknowledge that you have read and understood this D
 
 <template>
   <div class="ddr">
-    <!-- HEADER (same as Client Hub) -->
-    <nav class="topbar">
-      <NuxtLink to="/" class="logo" v-html="icons.wlthWordmark" />
-      <span class="logo" v-html="icons.parley" />
-    </nav>
-
-    <!-- HERO STRIP -->
-    <header class="strip">
-      <div class="container">
-        <h1>Direct Debit Request</h1>
-        <p>Set up or update your direct debit arrangements.</p>
-      </div>
-    </header>
+    <!-- HEADER (shared across all forms) -->
+    <FormHeader
+      title="Direct Debit Request"
+      subtitle="Set up or update your direct debit arrangements."
+    />
 
     <!-- PROGRESS -->
     <div class="progress" role="navigation" aria-label="Form steps">
