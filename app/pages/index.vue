@@ -64,20 +64,17 @@ const formRoutes: Record<string, string> = {
         </div>
 
         <div class="cards">
-          <component
-            :is="formRoutes[opt.type] ? resolveComponent('NuxtLink') : 'a'"
+          <NuxtLink
             v-for="opt in hub?.options"
             :key="opt.type"
             class="card"
-            :to="formRoutes[opt.type]"
-            :href="formRoutes[opt.type] ? undefined : opt.endpoint"
-            @click="formRoutes[opt.type] ? null : $event.preventDefault()"
+            :to="formRoutes[opt.type] ?? '/'"
           >
             <span class="card__icon" v-html="icons[opt.type] ?? icons.fallback" />
             <h3 class="card__title">{{ opt.title }}</h3>
             <p class="card__desc">{{ opt.description }}</p>
             <span class="card__cta" aria-hidden="true" v-html="icons.arrow" />
-          </component>
+          </NuxtLink>
         </div>
       </div>
 
