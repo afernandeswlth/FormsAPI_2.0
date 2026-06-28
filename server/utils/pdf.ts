@@ -87,8 +87,46 @@ async function fillDirectDebit(pdf: PDFDocument, form: PDFForm, rec: ServicingRe
   const freqIdx = FREQ_INDEX[d.repayment?.frequency]
   const isOther = d.repayment?.amountType === 'other'
   const amountText = isOther ? money(d.repayment?.amount) : 'Minimum Required'
+  const single = accounts.length <= 1
 
-  if (accounts.length <= 1) {
+  const pages = pdf.getPages()
+  const markFont = await pdf.embedFont(StandardFonts.HelveticaBold)
+
+  // Overlays (an "X" on chosen boxes + signature images) are collected here and
+  // drawn AFTER flatten so they sit on top of the baked field appearances.
+  type Overlay =
+    | { kind: 'x'; page: any; r: { x: number; y: number; width: number; height: number } }
+    | { kind: 'img'; page: any; r: { x: number; y: number; width: number; height: number }; png: any }
+  const overlays: Overlay[] = []
+  const geom = (name: string) => {
+    try {
+      const w = form.getField(name).acroField.getWidgets()[0]!
+      const pRef = w.dict.get(PDFName.of('P'))
+      const pi = pages.findIndex((p) => p.ref === pRef)
+      return { page: pages[pi < 0 ? (single ? 0 : 1) : pi]!, r: w.getRectangle() }
+    } catch {
+      return null
+    }
+  }
+  const markX = (name?: string) => {
+    if (!name) return
+    const g = geom(name)
+    if (g) overlays.push({ kind: 'x', ...g })
+  }
+  const markSig = async (name: string, dataUrl?: string) => {
+    const b64 = dataUrl && dataUrl.includes(',') ? dataUrl.split(',')[1]! : null
+    if (!b64) return
+    const g = geom(name)
+    if (!g) return
+    try {
+      const png = await pdf.embedPng(Buffer.from(b64, 'base64'))
+      overlays.push({ kind: 'img', ...g, png })
+    } catch {
+      /* ignore a bad signature image */
+    }
+  }
+
+  if (single) {
     // ---- PAGE 1: single linked account ----
     setText(form, 'Text29', rec.loanAccountNumber)
     setText(form, 'Text30', borrowers[0]?.lastName)
@@ -101,18 +139,18 @@ async function fillDirectDebit(pdf: PDFDocument, form: PDFForm, rec: ServicingRe
     setText(form, 'Text37', a.accountName)
     setText(form, 'BSB No_5', a.bsb)
     setText(form, 'ACCOUNT No_5', a.accountNumber)
-    const p1freq = ['Check Box13', 'Check Box14', 'Check Box15']
-    if (freqIdx != null) check(form, p1freq[freqIdx]!)
+    if (freqIdx != null) markX(['Check Box13', 'Check Box14', 'Check Box15'][freqIdx])
     if (isOther) setText(form, 'Single DD  $ amount', money(d.repayment?.amount))
-    else check(form, 'Check Box16')
+    else markX('Check Box16') // Minimum Required
     setText(form, 'Comments', d.comments)
     setText(form, 'Enter Text30', borrowers[0]?.mobile)
     setText(form, 'Enter Text29', borrowers[1]?.mobile)
     setText(form, 'Enter Text32', isoDate(d.signatures?.[0]?.signedAt))
     setText(form, 'Enter Text34', isoDate(d.signatures?.[1]?.signedAt))
-    await drawSignatures(pdf, form, ['Signature3', 'Signature4'], d.signatures, 0)
+    await markSig('Signature3', d.signatures?.[0]?.image)
+    await markSig('Signature4', d.signatures?.[1]?.image)
   } else {
-    // ---- PAGE 2: multiple linked accounts (1–4) ----
+    // ---- PAGE 2: multiple linked accounts (1–4 slots on the one page) ----
     setText(form, 'Enter Text1', rec.loanAccountNumber)
     setText(form, 'Enter Text2', borrowers[0]?.lastName)
     setText(form, 'Enter Text3', borrowers[0]?.firstName)
@@ -123,9 +161,8 @@ async function fillDirectDebit(pdf: PDFDocument, form: PDFForm, rec: ServicingRe
     const nm = ['Enter Text9', 'Enter Text13', 'Enter Text17', 'Enter Text21']
     const bsb = ['BSB No', 'BSB No_2', 'BSB No_3', 'BSB No_4']
     const acc = ['ACCOUNT No', 'ACCOUNT No_2', 'ACCOUNT No_3', 'ACCOUNT No_4']
-    // NB: the template names accounts 3 & 4 amount fields identically
-    // ("Frequency 4  $ amount") — both receive the same value, which is fine
-    // because this form uses one frequency/amount for the whole request.
+    // The template names accounts 3 & 4 amount fields identically
+    // ("Frequency 4  $ amount") — both receive the same value, fine here.
     const amt = [
       'Frequency 1  $ amount',
       'Frequency 2  $ amount',
@@ -145,14 +182,52 @@ async function fillDirectDebit(pdf: PDFDocument, form: PDFForm, rec: ServicingRe
       setText(form, bsb[i]!, a.bsb)
       setText(form, acc[i]!, a.accountNumber)
       setText(form, amt[i]!, amountText)
-      if (freqIdx != null) check(form, freqGroups[i]![freqIdx]!)
+      if (freqIdx != null) markX(freqGroups[i]![freqIdx])
     })
     setText(form, 'Enter Text23', borrowers[0]?.mobile)
     setText(form, 'Enter Text26', borrowers[1]?.mobile)
     setText(form, 'Enter Text25', isoDate(d.signatures?.[0]?.signedAt))
     setText(form, 'Enter Text28', isoDate(d.signatures?.[1]?.signedAt))
-    await drawSignatures(pdf, form, ['Signature1', 'Signature2'], d.signatures, 1)
+    await markSig('Signature1', d.signatures?.[0]?.image)
+    await markSig('Signature2', d.signatures?.[1]?.image)
   }
+
+  // Flatten the form fields, then draw the overlays on top.
+  try {
+    form.flatten()
+  } catch {
+    /* signature fields can resist flatten; ignore */
+  }
+  for (const o of overlays) {
+    if (o.kind === 'x') {
+      const box = Math.min(o.r.width, o.r.height)
+      const size = box * 1.15
+      const tw = markFont.widthOfTextAtSize('X', size)
+      o.page.drawText('X', {
+        x: o.r.x + (o.r.width - tw) / 2,
+        y: o.r.y + (o.r.height - size) / 2 + size * 0.12,
+        size,
+        font: markFont,
+        color: rgb(0.12, 0.14, 0.18),
+      })
+    } else {
+      const maxW = Math.min(o.r.width, 150)
+      const maxH = Math.min(o.r.height || 34, 36)
+      const sc = Math.min(maxW / o.png.width, maxH / o.png.height)
+      o.page.drawImage(o.png, {
+        x: o.r.x + 2,
+        y: o.r.y + 2,
+        width: o.png.width * sc,
+        height: o.png.height * sc,
+      })
+    }
+  }
+
+  // Keep only the relevant layout page (+ the terms page): drop the other.
+  // 1 account → drop the multi-account page (index 1).
+  // 2–4 accounts → drop the single-account page (index 0).
+  if (single) pdf.removePage(1)
+  else pdf.removePage(0)
 }
 
 // ---------------------------------------------------------------------------
