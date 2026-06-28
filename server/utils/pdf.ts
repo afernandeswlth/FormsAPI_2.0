@@ -41,38 +41,59 @@ function isoDate(s?: string) {
   return s ? s.slice(0, 10) : ''
 }
 
-/** Draw each borrower's signature PNG over the given signature widgets. */
-async function drawSignatures(
-  pdf: PDFDocument,
-  form: PDFForm,
-  fieldNames: string[],
-  signatures: Array<{ image?: string }> = [],
-  fallbackPageIndex = 0,
-) {
-  const pages = pdf.getPages()
-  for (let i = 0; i < fieldNames.length; i++) {
-    const dataUrl = signatures[i]?.image
-    const b64 = dataUrl && dataUrl.includes(',') ? dataUrl.split(',')[1]! : null
-    if (!b64) continue
-    try {
-      const png = await pdf.embedPng(Buffer.from(b64, 'base64'))
-      const field = form.getField(fieldNames[i]!)
-      const widget = field.acroField.getWidgets()[0]!
-      const pRef = widget.dict.get(PDFName.of('P'))
-      const pi = pages.findIndex((p) => p.ref === pRef)
-      const page = pages[pi < 0 ? fallbackPageIndex : pi]!
-      const r = widget.getRectangle()
-      // Fit the signature within the widget box, preserving aspect.
-      const maxW = Math.min(r.width, 150)
-      const maxH = Math.min(r.height || 34, 36)
-      const scale = Math.min(maxW / png.width, maxH / png.height)
-      const w = png.width * scale
-      const h = png.height * scale
-      page.drawImage(png, { x: r.x + 2, y: r.y + 2, width: w, height: h })
-    } catch {
-      /* ignore a single bad signature */
-    }
+type Rect = { x: number; y: number; width: number; height: number }
+type Geom = { page: any; r: Rect } | null
+
+/** Locate a field's first widget — its page and rectangle. */
+function fieldGeom(form: PDFForm, pages: any[], name: string): Geom {
+  try {
+    const w = form.getField(name).acroField.getWidgets()[0]!
+    const pRef = w.dict.get(PDFName.of('P'))
+    const pi = pages.findIndex((p) => p.ref === pRef)
+    return { page: pages[pi < 0 ? 0 : pi]!, r: w.getRectangle() }
+  } catch {
+    return null
   }
+}
+/** Decode a data-URL PNG into an embedded image (null if missing/bad). */
+async function embedSig(pdf: PDFDocument, dataUrl?: string) {
+  const b64 = dataUrl && dataUrl.includes(',') ? dataUrl.split(',')[1]! : null
+  if (!b64) return null
+  try {
+    return await pdf.embedPng(Buffer.from(b64, 'base64'))
+  } catch {
+    return null
+  }
+}
+/** Draw an "X" centred in a checkbox-sized rectangle. */
+function drawXMark(page: any, r: Rect, font: any) {
+  const box = Math.min(r.width, r.height)
+  const size = box * 1.15
+  const tw = font.widthOfTextAtSize('X', size)
+  page.drawText('X', {
+    x: r.x + (r.width - tw) / 2,
+    y: r.y + (r.height - size) / 2 + size * 0.12,
+    size,
+    font,
+    color: rgb(0.12, 0.14, 0.18),
+  })
+}
+/** Draw a signature image fitted into a box (defaults sized for a field). */
+function drawSigImage(
+  page: any,
+  png: any,
+  box: Rect,
+  opts: { maxW?: number; maxH?: number; dx?: number; dy?: number } = {},
+) {
+  const maxW = opts.maxW ?? Math.min(box.width, 150)
+  const maxH = opts.maxH ?? Math.min(box.height || 34, 36)
+  const sc = Math.min(maxW / png.width, maxH / png.height)
+  page.drawImage(png, {
+    x: box.x + (opts.dx ?? 2),
+    y: box.y + (opts.dy ?? 2),
+    width: png.width * sc,
+    height: png.height * sc,
+  })
 }
 
 // ---------------------------------------------------------------------------
@@ -430,11 +451,285 @@ async function generateSummaryPdf(rec: ServicingRequest): Promise<Uint8Array> {
   return pdf.save()
 }
 
-// Registry of per-type fillers. Add the remaining forms here as they're mapped.
+const fullName = (b: any) => (b ? `${b.firstName ?? ''} ${b.lastName ?? ''}`.trim() : '')
+
+// ---------------------------------------------------------------------------
+// Linked Account Nomination (same template structure as Direct Debit)
+// ---------------------------------------------------------------------------
+async function fillLinkedAccount(pdf: PDFDocument, form: PDFForm, rec: ServicingRequest) {
+  const d = rec.details as any
+  const b: any[] = d.borrowers ?? []
+  const accts: any[] = d.linkedAccounts ?? []
+  const single = accts.length <= 1
+  const pages = pdf.getPages()
+  const sigs: Array<{ g: NonNullable<Geom>; png: any }> = []
+  const addSig = async (name: string, img?: string) => {
+    const png = await embedSig(pdf, img)
+    const g = fieldGeom(form, pages, name)
+    if (png && g) sigs.push({ g, png })
+  }
+
+  if (single) {
+    setText(form, 'Text29', rec.loanAccountNumber)
+    setText(form, 'Text30', b[0]?.lastName)
+    setText(form, 'Text31', b[0]?.firstName)
+    setText(form, 'Text32', b[1]?.lastName)
+    setText(form, 'Text33', b[1]?.firstName)
+    const a = accts[0] ?? {}
+    setText(form, 'Text35', a.financialInstitution)
+    setText(form, 'Text36', a.branch)
+    setText(form, 'Text37', a.accountName)
+    setText(form, 'BSB No_5', a.bsb)
+    setText(form, 'ACCOUNT No_5', a.accountNumber)
+    setText(form, 'Comments', d.comments)
+    setText(form, 'Enter Text30', b[0]?.mobile)
+    setText(form, 'Enter Text29', b[1]?.mobile)
+    setText(form, 'Enter Text32', isoDate(d.signatures?.[0]?.signedAt))
+    setText(form, 'Enter Text34', isoDate(d.signatures?.[1]?.signedAt))
+    await addSig('Signature3', d.signatures?.[0]?.image)
+    await addSig('Signature4', d.signatures?.[1]?.image)
+  } else {
+    setText(form, 'Enter Text1', rec.loanAccountNumber)
+    setText(form, 'Enter Text2', b[0]?.lastName)
+    setText(form, 'Enter Text3', b[0]?.firstName)
+    setText(form, 'Enter Text4', b[1]?.lastName)
+    setText(form, 'Enter Text5', b[1]?.firstName)
+    const fi = ['Enter Text7', 'Enter Text11', 'Enter Text15', 'Enter Text19']
+    const br = ['Enter Text8', 'Enter Text12', 'Enter Text16', 'Enter Text20']
+    const nm = ['Enter Text9', 'Enter Text13', 'Enter Text17', 'Enter Text21']
+    const bsb = ['BSB No', 'BSB No_2', 'BSB No_3', 'BSB No_4']
+    const acc = ['ACCOUNT No', 'ACCOUNT No_2', 'ACCOUNT No_3', 'ACCOUNT No_4']
+    accts.slice(0, 4).forEach((a, i) => {
+      setText(form, fi[i]!, a.financialInstitution)
+      setText(form, br[i]!, a.branch)
+      setText(form, nm[i]!, a.accountName)
+      setText(form, bsb[i]!, a.bsb)
+      setText(form, acc[i]!, a.accountNumber)
+    })
+    setText(form, 'Enter Text23', b[0]?.mobile)
+    setText(form, 'Enter Text26', b[1]?.mobile)
+    setText(form, 'Enter Text25', isoDate(d.signatures?.[0]?.signedAt))
+    setText(form, 'Enter Text28', isoDate(d.signatures?.[1]?.signedAt))
+    await addSig('Signature1', d.signatures?.[0]?.image)
+    await addSig('Signature2', d.signatures?.[1]?.image)
+  }
+
+  try {
+    form.flatten()
+  } catch {
+    /* ignore */
+  }
+  for (const { g, png } of sigs) drawSigImage(g.page, png, g.r)
+  if (single) pdf.removePage(1)
+  else pdf.removePage(0)
+}
+
+// ---------------------------------------------------------------------------
+// Open Offset Account
+// ---------------------------------------------------------------------------
+async function fillOpenOffset(pdf: PDFDocument, form: PDFForm, rec: ServicingRequest) {
+  const d = rec.details as any
+  const b: any[] = d.borrowers ?? []
+  const pages = pdf.getPages()
+  setText(form, 'T1', b.map(fullName).filter(Boolean).join(', '))
+  ;['T2', 'T3', 'T4', 'T5'].forEach((f, i) => setText(form, f, b[i]?.customerNumber))
+  setText(form, 'T6', rec.loanAccountNumber)
+  const nameF = ['T7', 'T8', 'T11', 'T12']
+  const dateF = ['T9', 'T10', 'T13', 'T14']
+  b.slice(0, 4).forEach((x, i) => {
+    setText(form, nameF[i]!, fullName(x))
+    setText(form, dateF[i]!, isoDate(d.signatures?.[i]?.signedAt))
+  })
+  const png = await embedSig(pdf, d.signatures?.[0]?.image)
+  const g = fieldGeom(form, pages, 'S1')
+  try {
+    form.flatten()
+  } catch {
+    /* ignore */
+  }
+  if (png && g) drawSigImage(g.page, png, g.r, { maxW: Math.min(g.r.width, 220), maxH: Math.min(g.r.height, 42) })
+}
+
+// ---------------------------------------------------------------------------
+// Redraw Request
+// ---------------------------------------------------------------------------
+async function fillRedraw(pdf: PDFDocument, form: PDFForm, rec: ServicingRequest) {
+  const d = rec.details as any
+  const b: any[] = d.borrowers ?? []
+  const dest = d.destination ?? {}
+  const pages = pdf.getPages()
+  const font = await pdf.embedFont(StandardFonts.HelveticaBold)
+  ;['Text1', 'Text2', 'Text3', 'Text4'].forEach((f, i) => setText(form, f, fullName(b[i])))
+  setText(form, 'Loan Account Number', rec.loanAccountNumber)
+  setText(form, 'Loan Account Name', dest.accountName)
+  setText(form, 'BSB No', dest.bsb)
+  setText(form, 'ACCOUNT No', dest.accountNumber)
+  setText(form, 'Redraw Amount', money(d.amount))
+  setText(form, 'Redraw Reason', d.reason)
+  const dateF = ['Date1_af_date', 'Date2_af_date', 'Date3_af_date', 'Date4_af_date']
+  b.slice(0, 4).forEach((_x, i) => setText(form, dateF[i]!, isoDate(d.signatures?.[i]?.signedAt)))
+
+  const purposeBox: Record<string, string> = {
+    property: 'Check Box1',
+    construction: 'Check Box2',
+    'third-party': 'Check Box2',
+    other: 'Check Box2',
+    personal: 'Check Box3',
+  }
+  const overlays: Array<{ kind: 'x' | 'img'; g: NonNullable<Geom>; png?: any }> = []
+  const boxName = purposeBox[d.purpose]
+  if (boxName) {
+    const g = fieldGeom(form, pages, boxName)
+    if (g) overlays.push({ kind: 'x', g })
+  }
+  const sigNames = ['Signature1', 'Signature2', 'Signature3', 'Signature4']
+  for (let i = 0; i < b.length && i < 4; i++) {
+    const png = await embedSig(pdf, d.signatures?.[i]?.image)
+    const g = fieldGeom(form, pages, sigNames[i]!)
+    if (png && g) overlays.push({ kind: 'img', g, png })
+  }
+  try {
+    form.flatten()
+  } catch {
+    /* ignore */
+  }
+  for (const o of overlays) {
+    if (o.kind === 'x') drawXMark(o.g.page, o.g.r, font)
+    else drawSigImage(o.g.page, o.png, o.g.r)
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Product Switch  (also used by Permanent Principal Reduction — same template)
+// ---------------------------------------------------------------------------
+async function fillProductSwitch(pdf: PDFDocument, form: PDFForm, rec: ServicingRequest) {
+  const d = rec.details as any
+  const b: any[] = d.borrowers ?? []
+  const pages = pdf.getPages()
+  const font = await pdf.embedFont(StandardFonts.HelveticaBold)
+  const overlays: Array<{ kind: 'x' | 'img'; g: NonNullable<Geom>; png?: any }> = []
+  const markX = (name: string) => {
+    const g = fieldGeom(form, pages, name)
+    if (g) overlays.push({ kind: 'x', g })
+  }
+
+  setText(form, 'Enter Text1', fullName(b[0]))
+  setText(form, 'Enter Text2', fullName(b[1]))
+  setText(form, 'Enter Text3', rec.loanAccountNumber) // Loan Account Number 1
+
+  if (rec.type === 'product-switch') {
+    if (d.productType === 'pi') markX('Check Box1')
+    else if (d.productType === 'io') {
+      markX('Check Box2')
+      setText(form, 'Enter Text4', d.term)
+    } else if (d.productType === 'fixed') {
+      markX('Check Box3')
+      if (d.interestRate != null) setText(form, 'Enter Text5', `${d.interestRate}%`)
+      setText(form, 'Enter Text6', d.term)
+    }
+    setText(form, 'Enter Text25', d.reason)
+  } else {
+    // Permanent Principal Reduction shares this template — no product fields.
+    const amt = money(d.amount)
+    setText(
+      form,
+      'Enter Text25',
+      `Permanent principal reduction${amt ? ` of ${amt}` : ''}.${d.reason ? ` ${d.reason}` : ''}`,
+    )
+  }
+
+  // Signature section
+  setText(form, 'Enter Text15', fullName(b[0]))
+  setText(form, 'Enter Text20', fullName(b[1]))
+  const dmy = (iso?: string): [string, string, string] => {
+    if (!iso) return ['', '', '']
+    const [y, m, day] = iso.slice(0, 10).split('-')
+    return [day ?? '', m ?? '', y ?? '']
+  }
+  const [da1, mo1, yr1] = dmy(d.signatures?.[0]?.signedAt)
+  setText(form, 'Enter Text17', da1)
+  setText(form, 'Enter Text18', mo1)
+  setText(form, 'Enter Text19', yr1)
+  const [da2, mo2, yr2] = dmy(d.signatures?.[1]?.signedAt)
+  setText(form, 'Enter Text22', da2)
+  setText(form, 'Enter Text23', mo2)
+  setText(form, 'Enter Text24', yr2)
+
+  const sigNames = ['Signature1_es_:signer:signature', 'Signature2_es_:signer:signature']
+  for (let i = 0; i < b.length && i < 2; i++) {
+    const png = await embedSig(pdf, d.signatures?.[i]?.image)
+    const g = fieldGeom(form, pages, sigNames[i]!)
+    if (png && g) overlays.push({ kind: 'img', g, png })
+  }
+  try {
+    form.flatten()
+  } catch {
+    /* ignore */
+  }
+  for (const o of overlays) {
+    if (o.kind === 'x') drawXMark(o.g.page, o.g.r, font)
+    else drawSigImage(o.g.page, o.png, o.g.r)
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Repayment Change (flat PDF — no form fields, so text is overlaid by position)
+// ---------------------------------------------------------------------------
+async function fillRepaymentChange(pdf: PDFDocument, _form: PDFForm, rec: ServicingRequest) {
+  const d = rec.details as any
+  const b: any[] = d.borrowers ?? []
+  const page = pdf.getPage(0)
+  const font = await pdf.embedFont(StandardFonts.Helvetica)
+  const bold = await pdf.embedFont(StandardFonts.HelveticaBold)
+  const ink = rgb(0.1, 0.12, 0.16)
+  const T = (s: unknown, x: number, y: number, size = 10, f = font) => {
+    if (s == null || s === '') return
+    page.drawText(String(s), { x, y, size, font: f, color: ink })
+  }
+
+  // Borrower names (top section)
+  const nameY = [724, 697, 669, 642]
+  b.slice(0, 4).forEach((x, i) => T(fullName(x), 125, nameY[i]!))
+
+  // "I/We request that [WLTH] adjust the repayments to the following:"
+  T('WLTH', 188, 616)
+
+  // Row 1 — loan account, new amount, frequency
+  T(rec.loanAccountNumber, 70, 569)
+  T(d.amountType === 'fixed' ? money(d.amount) : 'Minimum', 300, 569)
+  const freqX: Record<string, number> = { weekly: 436, fortnightly: 509, monthly: 564 }
+  if (freqX[d.frequency] != null) T('X', freqX[d.frequency]!, 566, 11, bold)
+
+  // Signatures section (one row per borrower)
+  const sigY = [403, 375, 348, 320]
+  for (let i = 0; i < b.length && i < 4; i++) {
+    T(fullName(b[i]), 125, sigY[i]!)
+    const iso = d.signatures?.[i]?.signedAt
+    if (iso) {
+      const [yr, mo, day] = iso.slice(0, 10).split('-')
+      T(day, 478, sigY[i]!, 9)
+      T(mo, 520, sigY[i]!, 9)
+      T(yr, 548, sigY[i]!, 9)
+    }
+    const png = await embedSig(pdf, d.signatures?.[i]?.image)
+    if (png) {
+      const sc = Math.min(110 / png.width, 16 / png.height)
+      page.drawImage(png, { x: 285, y: sigY[i]! - 4, width: png.width * sc, height: png.height * sc })
+    }
+  }
+}
+
+// Registry of per-type fillers. Forms without an entry get a summary PDF.
 const FILLERS: Partial<
   Record<RequestType, (pdf: PDFDocument, form: PDFForm, rec: ServicingRequest) => Promise<void> | void>
 > = {
   'direct-debit': fillDirectDebit,
+  'linked-account': fillLinkedAccount,
+  'open-offset': fillOpenOffset,
+  'redraw': fillRedraw,
+  'product-switch': fillProductSwitch,
+  'principal-reduction': fillProductSwitch,
+  'repayment-change': fillRepaymentChange,
 }
 
 export function hasPdfTemplate(type: RequestType) {
