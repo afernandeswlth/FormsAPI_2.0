@@ -47,6 +47,8 @@ export default defineNuxtConfig({
   },
 
   nitro: {
+    // Bundle the blank PDF templates so they're readable at runtime (incl. Vercel)
+    serverAssets: [{ baseName: 'templates', dir: 'server/assets/templates' }],
     // Friendly default error shape for the API
     routeRules: {
       '/api/**': { cors: true },

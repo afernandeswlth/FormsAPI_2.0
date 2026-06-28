@@ -305,7 +305,13 @@ By signing this request you acknowledge that you have read and understood this D
           <strong>{{ result.reference }}</strong>.
         </p>
         <p class="muted">We'll be in touch to confirm your arrangement.</p>
-        <NuxtLink to="/" class="btn btn--primary">Back to Client Hub</NuxtLink>
+        <div class="success__actions">
+          <NuxtLink to="/" class="btn btn--primary">Back to Client Hub</NuxtLink>
+          <a
+            :href="`/api/requests/direct-debit/${result.id}/pdf`"
+            class="btn btn--ghost"
+          >Download Submission Copy</a>
+        </div>
       </section>
 
       <template v-else>
