@@ -234,8 +234,7 @@ function downloadCopy() {
         heading="Redraw Request Submitted"
         message="Thank you. Your redraw request has been received and is being reviewed by the WLTH team.&#10;&#10;We may contact you if additional documentation is required."
         :reference="result.reference"
-        show-download
-        @download="downloadCopy"
+        :download-href="`/api/requests/redraw/${result.id}/pdf`"
       />
 
       <template v-else>

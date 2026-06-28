@@ -1,6 +1,6 @@
-import { PDFDocument, PDFName, type PDFForm } from 'pdf-lib'
+import { PDFDocument, PDFName, StandardFonts, rgb, type PDFForm } from 'pdf-lib'
 import { createError } from 'h3'
-import type { RequestType, ServicingRequest } from '~~/server/types/requests'
+import { HUB_OPTIONS, type RequestType, type ServicingRequest } from '~~/server/types/requests'
 
 /**
  * Fills the official WLTH PDF template for a submitted request, returning the
@@ -155,6 +155,206 @@ async function fillDirectDebit(pdf: PDFDocument, form: PDFForm, rec: ServicingRe
   }
 }
 
+// ---------------------------------------------------------------------------
+// Generic WLTH-branded summary PDF (fallback for forms without a template map)
+// ---------------------------------------------------------------------------
+const TITLE: Record<string, string> = Object.fromEntries(
+  HUB_OPTIONS.map((o) => [o.type, o.title]),
+)
+const FREQ_LABEL: Record<string, string> = {
+  weekly: 'Weekly',
+  fortnightly: 'Fortnightly',
+  monthly: 'Monthly',
+}
+const PRODUCT_LABEL: Record<string, string> = {
+  pi: 'Principal & Interest',
+  io: 'Interest Only',
+  fixed: 'Fixed Rate',
+}
+const PURPOSE_LABEL: Record<string, string> = {
+  property: 'Property Purchase / Settlement',
+  construction: 'Construction / Renovation',
+  'third-party': 'Transfer To Third Party',
+  personal: 'Transfer To My Own Account',
+  other: 'Other',
+}
+
+async function generateSummaryPdf(rec: ServicingRequest): Promise<Uint8Array> {
+  const d = rec.details as any
+  const pdf = await PDFDocument.create()
+  const font = await pdf.embedFont(StandardFonts.Helvetica)
+  const bold = await pdf.embedFont(StandardFonts.HelveticaBold)
+  const navy = rgb(0.122, 0.137, 0.176)
+  const blue = rgb(0.078, 0.271, 0.78)
+  const muted = rgb(0.357, 0.4, 0.46)
+  const M = 50
+  const PW = 595
+  const W = PW - M * 2
+  let page = pdf.addPage([PW, 842])
+  let y = 800
+
+  const newPage = () => {
+    page = pdf.addPage([PW, 842])
+    y = 800
+  }
+  const ensure = (h: number) => {
+    if (y - h < 50) newPage()
+  }
+  const wrap = (s: string, f: typeof font, size: number, maxw: number) => {
+    const out: string[] = []
+    for (const para of String(s).split('\n')) {
+      let cur = ''
+      for (const word of para.split(/\s+/)) {
+        const t = cur ? `${cur} ${word}` : word
+        if (f.widthOfTextAtSize(t, size) > maxw && cur) {
+          out.push(cur)
+          cur = word
+        } else cur = t
+      }
+      out.push(cur)
+    }
+    return out
+  }
+  const heading = (s: string) => {
+    y -= 8
+    ensure(22)
+    page.drawText(s, { x: M, y, size: 12, font: bold, color: blue })
+    y -= 6
+    page.drawLine({ start: { x: M, y }, end: { x: PW - M, y }, thickness: 0.75, color: rgb(0.85, 0.88, 0.92) })
+    y -= 14
+  }
+  const row = (label: string, value: unknown) => {
+    const lines = wrap(value == null || value === '' ? '—' : String(value), font, 10, W - 160)
+    ensure(lines.length * 13 + 2)
+    page.drawText(label, { x: M, y, size: 9.5, font: bold, color: navy })
+    lines.forEach((ln, i) => {
+      page.drawText(ln, { x: M + 160, y, size: 10, font, color: rgb(0.15, 0.17, 0.2) })
+      if (i < lines.length - 1) y -= 13
+    })
+    y -= 16
+  }
+
+  // Header
+  page.drawText('WLTH', { x: M, y, size: 22, font: bold, color: navy })
+  y -= 28
+  page.drawText(TITLE[rec.type] ?? rec.type, { x: M, y, size: 16, font: bold, color: navy })
+  y -= 24
+  row('Reference', rec.reference)
+  row('Submitted', rec.createdAt?.slice(0, 10))
+  row('Status', rec.status)
+
+  if (Array.isArray(d.borrowers)) {
+    heading('Borrowers')
+    d.borrowers.forEach((b: any, i: number) => {
+      const parts = [
+        `${b.firstName ?? ''} ${b.lastName ?? ''}`.trim(),
+        b.customerNumber ? `Customer No. ${b.customerNumber}` : '',
+        b.mobile,
+        b.email,
+      ].filter(Boolean)
+      row(`Borrower ${i + 1}`, parts.join('  ·  '))
+    })
+  }
+
+  heading('Loan')
+  row('Loan Account Number', rec.loanAccountNumber)
+  if (d.comments) row('Comments', d.comments)
+
+  if (Array.isArray(d.linkedAccounts) && d.linkedAccounts.length) {
+    heading('Linked Account(s)')
+    d.linkedAccounts.forEach((a: any, i: number) => {
+      const type = a.accountType === 'wlth' ? 'WLTH' : a.accountType === 'external' ? 'External' : ''
+      const parts = [
+        type,
+        a.accountName,
+        a.financialInstitution,
+        a.branch,
+        a.bsb ? `BSB ${a.bsb}` : '',
+        a.accountNumber,
+      ].filter(Boolean)
+      row(`Account ${i + 1}`, parts.join('  ·  '))
+    })
+  }
+
+  // Type-specific details
+  const det: Array<[string, unknown]> = []
+  if (d.repayment) {
+    det.push(['Frequency', FREQ_LABEL[d.repayment.frequency] ?? d.repayment.frequency])
+    det.push([
+      'Repayment Amount',
+      d.repayment.amountType === 'other' || d.repayment.amountType === 'fixed'
+        ? money(d.repayment.amount)
+        : 'Minimum',
+    ])
+  }
+  if (d.frequency) det.push(['Frequency', FREQ_LABEL[d.frequency] ?? d.frequency])
+  if (d.amountType) {
+    det.push([
+      'Repayment Amount',
+      d.amountType === 'minimum' ? 'Minimum amount' : money(d.amount),
+    ])
+  } else if (d.amount != null && !d.repayment) {
+    det.push(['Amount', money(d.amount)])
+  }
+  if (d.destination) {
+    det.push([
+      'Destination Account',
+      [d.destination.accountName, `BSB ${d.destination.bsb}`, d.destination.accountNumber]
+        .filter(Boolean)
+        .join('  ·  '),
+    ])
+  }
+  if (d.purpose) det.push(['Purpose', PURPOSE_LABEL[d.purpose] ?? d.purpose])
+  if (d.productType) det.push(['Requested Product', PRODUCT_LABEL[d.productType] ?? d.productType])
+  if (d.interestRate != null) det.push(['Preferred Rate', `${d.interestRate}%`])
+  if (d.term) det.push(['Term', d.term])
+  if (d.reason) det.push(['Reason', d.reason])
+  if (det.length) {
+    heading('Request Details')
+    det.forEach(([l, v]) => row(l, v))
+  }
+
+  if (Array.isArray(d.attachments) && d.attachments.length) {
+    heading('Attachments')
+    d.attachments.forEach((a: any, i: number) => row(`Document ${i + 1}`, a.name))
+  }
+
+  heading('Declaration & Signatures')
+  if (d.declaration) row('Declaration', d.declaration.agreed ? 'Accepted' : 'Not accepted')
+  if (d.acknowledgement) row('Acknowledgement', d.acknowledgement.accepted ? 'Accepted' : 'Not accepted')
+
+  // Signature images
+  const sigs: any[] = Array.isArray(d.signatures) ? d.signatures : []
+  for (let i = 0; i < sigs.length; i++) {
+    const img = sigs[i]?.image
+    const b64 = img && img.includes(',') ? img.split(',')[1] : null
+    ensure(70)
+    page.drawText(`Borrower ${i + 1} signature`, { x: M, y, size: 9.5, font: bold, color: navy })
+    y -= 6
+    if (b64) {
+      try {
+        const png = await pdf.embedPng(Buffer.from(b64, 'base64'))
+        const w = 160
+        const h = (png.height / png.width) * w
+        ensure(h + 14)
+        page.drawImage(png, { x: M, y: y - h, width: w, height: h })
+        page.drawLine({ start: { x: M, y: y - h - 3 }, end: { x: M + 200, y: y - h - 3 }, thickness: 0.5, color: muted })
+        y -= h + 14
+      } catch {
+        y -= 14
+      }
+    } else {
+      y -= 14
+    }
+    if (sigs[i]?.signedAt) {
+      page.drawText(`Signed ${String(sigs[i].signedAt).slice(0, 10)}`, { x: M, y, size: 8, font, color: muted })
+      y -= 14
+    }
+  }
+
+  return pdf.save()
+}
+
 // Registry of per-type fillers. Add the remaining forms here as they're mapped.
 const FILLERS: Partial<
   Record<RequestType, (pdf: PDFDocument, form: PDFForm, rec: ServicingRequest) => Promise<void> | void>
@@ -170,11 +370,10 @@ export async function fillTemplate(
   rec: ServicingRequest,
 ): Promise<{ bytes: Uint8Array; filename: string }> {
   const filler = FILLERS[rec.type]
+  // Forms without an official-template map get a clean WLTH summary PDF instead.
   if (!filler) {
-    throw createError({
-      statusCode: 501,
-      statusMessage: `A completed PDF is not yet available for ${rec.type}`,
-    })
+    const bytes = await generateSummaryPdf(rec)
+    return { bytes, filename: `${rec.reference}.pdf` }
   }
   const candidates: Array<[string, string]> = [
     ['assets:templates', `${rec.type}.pdf`],

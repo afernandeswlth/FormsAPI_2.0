@@ -6,11 +6,11 @@ withDefaults(
     heading: string
     message: string
     reference?: string
-    showDownload?: boolean
+    /** When set, shows a "Download Submission Copy" link to this URL. */
+    downloadHref?: string
   }>(),
-  { showDownload: false },
+  { downloadHref: '' },
 )
-const emit = defineEmits<{ (e: 'download'): void }>()
 </script>
 
 <template>
@@ -23,9 +23,9 @@ const emit = defineEmits<{ (e: 'download'): void }>()
     </p>
     <div class="success__actions">
       <NuxtLink to="/" class="btn btn--primary">Return to Client Hub</NuxtLink>
-      <button v-if="showDownload" type="button" class="btn btn--ghost" @click="emit('download')">
-        Download Copy
-      </button>
+      <a v-if="downloadHref" :href="downloadHref" class="btn btn--ghost">
+        Download Submission Copy
+      </a>
     </div>
   </section>
 </template>

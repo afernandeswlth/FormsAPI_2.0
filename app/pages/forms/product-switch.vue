@@ -189,8 +189,7 @@ function downloadCopy() {
         heading="Product Switch Request Submitted"
         message="Thank you. Your Product Switch Request has been submitted to the WLTH team for assessment.&#10;&#10;A team member may contact you to discuss available options and any applicable fees or charges."
         :reference="result.reference"
-        show-download
-        @download="downloadCopy"
+        :download-href="`/api/requests/product-switch/${result.id}/pdf`"
       />
 
       <template v-else>
