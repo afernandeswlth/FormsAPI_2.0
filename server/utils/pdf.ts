@@ -101,9 +101,22 @@ function drawSigImage(
 // ---------------------------------------------------------------------------
 const FREQ_INDEX: Record<string, number> = { weekly: 0, fortnightly: 1, monthly: 2 }
 
-async function fillDirectDebit(pdf: PDFDocument, form: PDFForm, rec: ServicingRequest) {
+// Fill ONE Direct Debit account page (single- or multi-account layout) for the
+// borrower pair starting at `startIdx`, then keep [account page, terms]. Shared
+// loan/account/frequency/amount data repeats on every page; only the borrower
+// names, signatures, dates and contacts change.
+async function fillDirectDebitPage(
+  pdf: PDFDocument,
+  form: PDFForm,
+  rec: ServicingRequest,
+  startIdx: number,
+) {
   const d = rec.details as any
   const borrowers: any[] = d.borrowers ?? []
+  const b1 = borrowers[startIdx]
+  const b2 = borrowers[startIdx + 1]
+  const sig1 = d.signatures?.[startIdx]
+  const sig2 = d.signatures?.[startIdx + 1]
   const accounts: any[] = d.linkedAccounts ?? []
   const freqIdx = FREQ_INDEX[d.repayment?.frequency]
   const isOther = d.repayment?.amountType === 'other'
@@ -150,10 +163,10 @@ async function fillDirectDebit(pdf: PDFDocument, form: PDFForm, rec: ServicingRe
   if (single) {
     // ---- PAGE 1: single linked account ----
     setText(form, 'Text29', rec.loanAccountNumber)
-    setText(form, 'Text30', borrowers[0]?.lastName)
-    setText(form, 'Text31', borrowers[0]?.firstName)
-    setText(form, 'Text32', borrowers[1]?.lastName)
-    setText(form, 'Text33', borrowers[1]?.firstName)
+    setText(form, 'Text30', b1?.lastName)
+    setText(form, 'Text31', b1?.firstName)
+    setText(form, 'Text32', b2?.lastName)
+    setText(form, 'Text33', b2?.firstName)
     const a = accounts[0] ?? {}
     setText(form, 'Text35', a.financialInstitution)
     setText(form, 'Text36', a.branch)
@@ -164,19 +177,19 @@ async function fillDirectDebit(pdf: PDFDocument, form: PDFForm, rec: ServicingRe
     if (isOther) setText(form, 'Single DD  $ amount', money(d.repayment?.amount))
     else markX('Check Box16') // Minimum Required
     setText(form, 'Comments', d.comments)
-    setText(form, 'Enter Text30', borrowers[0]?.mobile)
-    setText(form, 'Enter Text29', borrowers[1]?.mobile)
-    setText(form, 'Enter Text32', isoDate(d.signatures?.[0]?.signedAt))
-    setText(form, 'Enter Text34', isoDate(d.signatures?.[1]?.signedAt))
-    await markSig('Signature3', d.signatures?.[0]?.image)
-    await markSig('Signature4', d.signatures?.[1]?.image)
+    setText(form, 'Enter Text30', b1?.mobile)
+    setText(form, 'Enter Text29', b2?.mobile)
+    setText(form, 'Enter Text32', isoDate(sig1?.signedAt))
+    setText(form, 'Enter Text34', isoDate(sig2?.signedAt))
+    await markSig('Signature3', sig1?.image)
+    await markSig('Signature4', sig2?.image)
   } else {
     // ---- PAGE 2: multiple linked accounts (1–4 slots on the one page) ----
     setText(form, 'Enter Text1', rec.loanAccountNumber)
-    setText(form, 'Enter Text2', borrowers[0]?.lastName)
-    setText(form, 'Enter Text3', borrowers[0]?.firstName)
-    setText(form, 'Enter Text4', borrowers[1]?.lastName)
-    setText(form, 'Enter Text5', borrowers[1]?.firstName)
+    setText(form, 'Enter Text2', b1?.lastName)
+    setText(form, 'Enter Text3', b1?.firstName)
+    setText(form, 'Enter Text4', b2?.lastName)
+    setText(form, 'Enter Text5', b2?.firstName)
     const fi = ['Enter Text7', 'Enter Text11', 'Enter Text15', 'Enter Text19']
     const br = ['Enter Text8', 'Enter Text12', 'Enter Text16', 'Enter Text20']
     const nm = ['Enter Text9', 'Enter Text13', 'Enter Text17', 'Enter Text21']
@@ -205,12 +218,12 @@ async function fillDirectDebit(pdf: PDFDocument, form: PDFForm, rec: ServicingRe
       setText(form, amt[i]!, amountText)
       if (freqIdx != null) markX(freqGroups[i]![freqIdx])
     })
-    setText(form, 'Enter Text23', borrowers[0]?.mobile)
-    setText(form, 'Enter Text26', borrowers[1]?.mobile)
-    setText(form, 'Enter Text25', isoDate(d.signatures?.[0]?.signedAt))
-    setText(form, 'Enter Text28', isoDate(d.signatures?.[1]?.signedAt))
-    await markSig('Signature1', d.signatures?.[0]?.image)
-    await markSig('Signature2', d.signatures?.[1]?.image)
+    setText(form, 'Enter Text23', b1?.mobile)
+    setText(form, 'Enter Text26', b2?.mobile)
+    setText(form, 'Enter Text25', isoDate(sig1?.signedAt))
+    setText(form, 'Enter Text28', isoDate(sig2?.signedAt))
+    await markSig('Signature1', sig1?.image)
+    await markSig('Signature2', sig2?.image)
   }
 
   // Flatten the form fields, then draw the overlays on top.
@@ -244,11 +257,39 @@ async function fillDirectDebit(pdf: PDFDocument, form: PDFForm, rec: ServicingRe
     }
   }
 
-  // Keep only the relevant layout page (+ the terms page): drop the other.
-  // 1 account → drop the multi-account page (index 1).
-  // 2–4 accounts → drop the single-account page (index 0).
-  if (single) pdf.removePage(1)
-  else pdf.removePage(0)
+  // (Page selection is handled by the wrapper.)
+}
+
+// The Direct Debit template only has two borrower signature slots per page. For
+// 3–4 borrowers, duplicate the account page (same loan account, linked accounts,
+// frequency and amount) and put borrowers 3 & 4 on it, inserted before the
+// terms page → [account (b1,b2), account (b3,b4), terms].
+//
+// Template page order is [single-account, multi-account, terms]. The account
+// page used is index 0 (single, ≤1 account) or 1 (multi, 2–4 accounts).
+async function fillDirectDebit(
+  pdf: PDFDocument,
+  form: PDFForm,
+  rec: ServicingRequest,
+  raw?: Uint8Array,
+) {
+  const d = rec.details as any
+  const b: any[] = d.borrowers ?? []
+  const single = (d.linkedAccounts ?? []).length <= 1
+  const accIdx = single ? 0 : 1
+
+  await fillDirectDebitPage(pdf, form, rec, 0)
+
+  let extra: any = null
+  if (b.length > 2 && raw) {
+    const pdf2 = await PDFDocument.load(raw, { ignoreEncryption: true })
+    await fillDirectDebitPage(pdf2, pdf2.getForm(), rec, 2)
+    ;[extra] = await pdf.copyPages(pdf2, [accIdx]) // the account page for b3/b4
+  }
+
+  // Drop the unused layout page → [account (b1,b2), terms]; then insert b3/b4.
+  pdf.removePage(single ? 1 : 0)
+  if (extra) pdf.insertPage(1, extra)
 }
 
 // ---------------------------------------------------------------------------
