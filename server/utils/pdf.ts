@@ -602,9 +602,20 @@ async function fillRedraw(pdf: PDFDocument, form: PDFForm, rec: ServicingRequest
 // ---------------------------------------------------------------------------
 // Product Switch  (also used by Permanent Principal Reduction — same template)
 // ---------------------------------------------------------------------------
-async function fillProductSwitch(pdf: PDFDocument, form: PDFForm, rec: ServicingRequest) {
+// Fill ONE Product Switch page for the borrower pair starting at `startIdx`
+// (borrowers startIdx and startIdx+1). Shared loan/product/reason data is
+// repeated on every page; only the borrower names, signatures and dates differ.
+async function fillProductSwitchPage(
+  pdf: PDFDocument,
+  form: PDFForm,
+  rec: ServicingRequest,
+  startIdx: number,
+) {
   const d = rec.details as any
   const b: any[] = d.borrowers ?? []
+  const sg: any[] = d.signatures ?? []
+  const b1 = b[startIdx]
+  const b2 = b[startIdx + 1]
   const pages = pdf.getPages()
   const font = await pdf.embedFont(StandardFonts.HelveticaBold)
   const overlays: Array<{ kind: 'x' | 'img'; g: NonNullable<Geom>; png?: any }> = []
@@ -613,9 +624,9 @@ async function fillProductSwitch(pdf: PDFDocument, form: PDFForm, rec: Servicing
     if (g) overlays.push({ kind: 'x', g })
   }
 
-  setText(form, 'Enter Text1', fullName(b[0]))
-  setText(form, 'Enter Text2', fullName(b[1]))
-  setText(form, 'Enter Text3', rec.loanAccountNumber) // Loan Account Number 1
+  setText(form, 'Enter Text1', fullName(b1))
+  setText(form, 'Enter Text2', fullName(b2))
+  setText(form, 'Enter Text3', rec.loanAccountNumber) // Loan Account Number 1 (same on every page)
 
   if (rec.type === 'product-switch') {
     if (d.productType === 'pi') markX('Check Box1')
@@ -638,27 +649,27 @@ async function fillProductSwitch(pdf: PDFDocument, form: PDFForm, rec: Servicing
     )
   }
 
-  // Signature section
-  setText(form, 'Enter Text15', fullName(b[0]))
-  setText(form, 'Enter Text20', fullName(b[1]))
+  // Signature section — the two borrowers for this page
+  setText(form, 'Enter Text15', fullName(b1))
+  setText(form, 'Enter Text20', fullName(b2))
   const dmy = (iso?: string): [string, string, string] => {
     if (!iso) return ['', '', '']
     const [y, m, day] = iso.slice(0, 10).split('-')
     return [day ?? '', m ?? '', y ?? '']
   }
-  const [da1, mo1, yr1] = dmy(d.signatures?.[0]?.signedAt)
+  const [da1, mo1, yr1] = dmy(sg[startIdx]?.signedAt)
   setText(form, 'Enter Text17', da1)
   setText(form, 'Enter Text18', mo1)
   setText(form, 'Enter Text19', yr1)
-  const [da2, mo2, yr2] = dmy(d.signatures?.[1]?.signedAt)
+  const [da2, mo2, yr2] = dmy(sg[startIdx + 1]?.signedAt)
   setText(form, 'Enter Text22', da2)
   setText(form, 'Enter Text23', mo2)
   setText(form, 'Enter Text24', yr2)
 
   const sigNames = ['Signature1_es_:signer:signature', 'Signature2_es_:signer:signature']
-  for (let i = 0; i < b.length && i < 2; i++) {
-    const png = await embedSig(pdf, d.signatures?.[i]?.image)
-    const g = fieldGeom(form, pages, sigNames[i]!)
+  for (const [i, name] of sigNames.entries()) {
+    const png = await embedSig(pdf, sg[startIdx + i]?.image)
+    const g = fieldGeom(form, pages, name)
     if (png && g) overlays.push({ kind: 'img', g, png })
   }
   try {
@@ -669,6 +680,25 @@ async function fillProductSwitch(pdf: PDFDocument, form: PDFForm, rec: Servicing
   for (const o of overlays) {
     if (o.kind === 'x') drawXMark(o.g.page, o.g.r, font)
     else drawSigImage(o.g.page, o.png, o.g.r)
+  }
+}
+
+// The Product Switch template (shared with Principal Reduction) only has two
+// signature slots. For 3–4 borrowers, duplicate the page — same loan/product/
+// reason details — and put borrowers 3 & 4 on the second copy.
+async function fillProductSwitch(
+  pdf: PDFDocument,
+  form: PDFForm,
+  rec: ServicingRequest,
+  raw?: Uint8Array,
+) {
+  const b: any[] = (rec.details as any).borrowers ?? []
+  await fillProductSwitchPage(pdf, form, rec, 0)
+  if (b.length > 2 && raw) {
+    const pdf2 = await PDFDocument.load(raw, { ignoreEncryption: true })
+    await fillProductSwitchPage(pdf2, pdf2.getForm(), rec, 2)
+    const [page2] = await pdf.copyPages(pdf2, [0])
+    pdf.addPage(page2)
   }
 }
 
@@ -721,7 +751,10 @@ async function fillRepaymentChange(pdf: PDFDocument, _form: PDFForm, rec: Servic
 
 // Registry of per-type fillers. Forms without an entry get a summary PDF.
 const FILLERS: Partial<
-  Record<RequestType, (pdf: PDFDocument, form: PDFForm, rec: ServicingRequest) => Promise<void> | void>
+  Record<
+    RequestType,
+    (pdf: PDFDocument, form: PDFForm, rec: ServicingRequest, raw?: Uint8Array) => Promise<void> | void
+  >
 > = {
   'direct-debit': fillDirectDebit,
   'linked-account': fillLinkedAccount,
@@ -760,7 +793,7 @@ export async function fillTemplate(
   }
   const pdf = await PDFDocument.load(raw, { ignoreEncryption: true })
   const form = pdf.getForm()
-  await filler(pdf, form, rec)
+  await filler(pdf, form, rec, raw)
   try {
     form.flatten()
   } catch {
