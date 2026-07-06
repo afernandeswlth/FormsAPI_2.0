@@ -184,7 +184,7 @@ watch(productType, () => {
   align-items: flex-start;
   margin-top: 22px;
   padding: 18px 20px;
-  background: #f6feff;
+  background: var(--surface-muted);
   border: 1.5px solid var(--line);
   border-left: 5px solid var(--aqua);
   border-radius: 12px;

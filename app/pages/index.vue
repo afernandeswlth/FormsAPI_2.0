@@ -121,7 +121,7 @@ const formRoutes: Record<string, string> = {
 .hero {
   position: relative;
   isolation: isolate;
-  background: linear-gradient(160deg, #0a3d4a 0%, #102a3e 45%, var(--navy) 100%);
+  background: linear-gradient(160deg, var(--db-500) 0%, var(--db-600) 45%, var(--db-800) 100%);
   color: var(--white);
   overflow: hidden;
 }
@@ -229,7 +229,7 @@ const formRoutes: Record<string, string> = {
   max-width: 250px;
   min-width: 220px;
   background: var(--white);
-  border-radius: 20px;
+  border-radius: var(--radius-card);
   padding: 36px 28px 28px;
   text-align: center;
   text-decoration: none;
@@ -251,11 +251,11 @@ const formRoutes: Record<string, string> = {
   width: 80px;
   height: 80px;
   border-radius: 50%;
-  background: #eef6f9;
+  background: var(--primary-tint);
   display: grid;
   place-items: center;
   margin-bottom: 22px;
-  color: #169aa6;
+  color: var(--blue);
 }
 .card__icon :deep(svg) {
   width: 36px;
@@ -276,7 +276,7 @@ const formRoutes: Record<string, string> = {
   flex-grow: 1;
 }
 .card__cta {
-  color: #169aa6;
+  color: var(--blue);
 }
 .card__cta :deep(svg) {
   width: 26px;
@@ -285,7 +285,7 @@ const formRoutes: Record<string, string> = {
 
 /* ---------- IMPACT BAND ---------- */
 .band {
-  background: #dfeef2;
+  background: var(--surface-muted);
   margin-top: 40px;
 }
 .band__grid {
@@ -314,7 +314,7 @@ const formRoutes: Record<string, string> = {
   line-height: 1.45;
 }
 .band__icon {
-  color: #169aa6;
+  color: var(--blue);
   flex-shrink: 0;
 }
 .band__icon :deep(svg) {

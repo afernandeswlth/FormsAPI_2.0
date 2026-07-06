@@ -750,8 +750,8 @@ By signing this request you acknowledge that you have read and understood this D
   gap: 20px;
 }
 .card {
-  background: #fff;
-  border-radius: 20px;
+  background: var(--surface);
+  border-radius: var(--radius-card);
   padding: 40px;
   box-shadow: 0 10px 30px rgba(16, 42, 62, 0.06);
 }
@@ -1167,28 +1167,33 @@ By signing this request you acknowledge that you have read and understood this D
 }
 .btn {
   border: none;
-  border-radius: 12px;
+  border-radius: var(--radius-pill);
   font: inherit;
   font-weight: 600;
   cursor: pointer;
   min-height: 52px;
-  padding: 0 28px;
+  padding: 0 30px;
   text-decoration: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
 .btn--primary {
   background: var(--blue);
   color: #fff;
 }
 .btn--primary:hover {
-  background: #0f37a3;
+  background: var(--blue-hover);
 }
 .btn--ghost {
-  background: #fff;
+  background: var(--surface);
   border: 1.5px solid var(--line);
   color: var(--navy);
+}
+.btn--ghost:hover {
+  border-color: var(--blue);
+  color: var(--blue);
 }
 .btn--submit {
   background: var(--blue);
@@ -1196,7 +1201,10 @@ By signing this request you acknowledge that you have read and understood this D
   width: 100%;
   height: 60px;
   font-size: 18px;
-  border-radius: 12px;
+  border-radius: var(--radius-pill);
+}
+.btn--submit:hover {
+  background: var(--blue-hover);
 }
 .btn--submit:disabled {
   opacity: 0.6;

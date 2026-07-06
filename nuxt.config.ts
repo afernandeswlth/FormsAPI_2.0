@@ -5,16 +5,16 @@ export default defineNuxtConfig({
   future: { compatibilityVersion: 4 },
   devtools: { enabled: true },
 
-  css: ['~/assets/css/forms.css'],
+  css: ['~/assets/css/brand.css', '~/assets/css/forms.css'],
 
-  // WLTH brand tokens exposed to the app + runtime
+  // WLTH brand tokens (WLTH Design System) exposed to the app + runtime
   appConfig: {
     brand: {
       text: '#FFFFFF',
-      background: '#1F232D', // dark navy
+      background: '#1F232D', // dark blue 600
       buttonText: '#FFFFFF',
-      button: '#1445C7', // royal blue
-      accent: '#00D9E7', // aqua
+      button: '#1445C7', // royal blue 500
+      accent: '#04CA72', // WLTH green
     },
   },
 
@@ -32,16 +32,8 @@ export default defineNuxtConfig({
         },
       ],
       link: [
-        { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
-        {
-          rel: 'preconnect',
-          href: 'https://fonts.gstatic.com',
-          crossorigin: '',
-        },
-        {
-          rel: 'stylesheet',
-          href: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap',
-        },
+        // WLTH brand typeface (SuisseIntl) is served from this CDN
+        { rel: 'preconnect', href: 'https://assets.wlth.com', crossorigin: '' },
       ],
     },
   },

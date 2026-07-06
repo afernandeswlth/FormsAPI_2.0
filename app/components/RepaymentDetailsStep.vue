@@ -125,7 +125,7 @@ const previewAmount = computed(() =>
   border-left: 5px solid var(--aqua);
   border-radius: 14px;
   padding: 20px 24px;
-  background: #f6feff;
+  background: var(--surface-muted);
   max-width: 420px;
 }
 .preview h4 {

@@ -137,7 +137,7 @@ function onReason(e: Event) {
   gap: 14px;
   align-items: flex-start;
   margin-top: 22px;
-  background: #e8fafc;
+  background: var(--surface-muted);
   border-left: 5px solid var(--aqua);
   border-radius: 12px;
   padding: 20px;
@@ -163,7 +163,7 @@ function onReason(e: Event) {
   border-left: 5px solid var(--aqua);
   border-radius: 14px;
   padding: 18px 24px;
-  background: #f6feff;
+  background: var(--surface-muted);
   max-width: 420px;
 }
 .summary h4 {

@@ -13,7 +13,7 @@ export const icons: Record<string, string> = {
       <g stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round">
         <path d="M2 4 L7 23 L11 10"/><path d="M13 4 L18 23 L22 10"/>
       </g>
-      <text x="40" y="21" font-family="Inter, sans-serif" font-size="22" font-weight="700" letter-spacing="3" fill="currentColor">WLTH</text>
+      <text x="40" y="21" font-family="'SuisseIntl', sans-serif" font-size="22" font-weight="700" letter-spacing="3" fill="currentColor">WLTH</text>
     </svg>`,
 
   parley: `<svg viewBox="0 0 150 28" height="22" fill="none" aria-label="WLTH x Parley">
@@ -21,18 +21,18 @@ export const icons: Record<string, string> = {
         <path d="M2 5 L6 21 L9 11"/><path d="M11 5 L15 21 L18 11"/>
       </g>
       <line x1="26" y1="5" x2="26" y2="22" stroke="currentColor" stroke-width="1.2" opacity="0.5"/>
-      <text x="33" y="20" font-family="Inter, sans-serif" font-size="15" font-style="italic" font-weight="600" letter-spacing="1.5" fill="currentColor">Parley</text>
+      <text x="33" y="20" font-family="'SuisseIntl', sans-serif" font-size="15" font-style="italic" font-weight="600" letter-spacing="1.5" fill="currentColor">Parley</text>
     </svg>`,
 
   certified: `<svg viewBox="0 0 110 130" fill="none" stroke="currentColor" aria-label="Certified Impact Lender">
-      <text x="55" y="14" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" font-weight="600" fill="currentColor" stroke="none">Certified</text>
+      <text x="55" y="14" text-anchor="middle" font-family="'SuisseIntl', sans-serif" font-size="12" font-weight="600" fill="currentColor" stroke="none">Certified</text>
       <g stroke-width="2" fill="none">
         <path d="M55 30 L88 52 V92 H22 V52 Z"/>
         <path d="M55 44 L77 59 V86 H33 V59 Z"/>
         <path d="M55 58 L66 66 V80 H44 V66 Z"/>
       </g>
-      <text x="55" y="114" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" font-weight="700" fill="currentColor" stroke="none">Impact Lender</text>
-      <text x="93" y="98" font-family="Inter, sans-serif" font-size="8" fill="currentColor" stroke="none">®</text>
+      <text x="55" y="114" text-anchor="middle" font-family="'SuisseIntl', sans-serif" font-size="12" font-weight="700" fill="currentColor" stroke="none">Impact Lender</text>
+      <text x="93" y="98" font-family="'SuisseIntl', sans-serif" font-size="8" fill="currentColor" stroke="none">®</text>
     </svg>`,
 
   arrow: stroke('<path d="M4 12 H19"/><path d="M13 6 L19 12 L13 18"/>'),

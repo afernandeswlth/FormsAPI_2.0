@@ -21,7 +21,7 @@
   display: flex;
   gap: 18px;
   align-items: flex-start;
-  background: #f6feff;
+  background: var(--surface-muted);
   border: 1.5px solid var(--line);
   border-left: 5px solid var(--aqua);
 }

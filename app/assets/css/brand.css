@@ -1,0 +1,101 @@
+/* ============================================================
+   WLTH Design System — brand tokens (source of truth)
+   Palette, typography and semantic variables extracted from
+   https://wlth-design-system-delta.vercel.app/
+   ============================================================ */
+
+/* ---- SuisseIntl (official WLTH brand typeface) ----
+   Only Book (300) and Medium (500) are published on the WLTH CDN, so we map
+   lighter weights to Book and heavier weights to Medium via weight ranges.
+   This mirrors the design system and guarantees text renders in SuisseIntl. */
+@font-face {
+  font-family: 'SuisseIntl';
+  font-weight: 100 400;
+  font-style: normal;
+  font-display: swap;
+  src: url('https://assets.wlth.com/fonts/SuisseIntl-Book.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'SuisseIntl';
+  font-weight: 500 900;
+  font-style: normal;
+  font-display: swap;
+  src: url('https://assets.wlth.com/fonts/SuisseIntl-Medium.woff2') format('woff2');
+}
+
+:root {
+  /* ---- Royal Blue (primary) ---- */
+  --rb-50: #eef2ff;
+  --rb-100: #d9e2ff;
+  --rb-200: #b3c8ff;
+  --rb-300: #7fa6f5;
+  --rb-400: #4e78e3;
+  --rb-500: #1445c7;
+  --rb-600: #0f3aa8;
+  --rb-700: #0c2e88;
+  --rb-800: #09256f;
+  --rb-900: #061d59;
+  --rb-950: #03133b;
+
+  /* ---- Dark Blue (secondary / hero) ---- */
+  --db-50: #f6f7f8;
+  --db-100: #edeff0;
+  --db-200: #d2d5d8;
+  --db-300: #b5bac0;
+  --db-400: #8e959e;
+  --db-500: #292e3a;
+  --db-600: #1f232d;
+  --db-700: #181c24;
+  --db-800: #10141b;
+  --db-900: #0a0e12;
+  --db-950: #06090d;
+
+  /* ---- Light Grey (neutrals) ---- */
+  --lg-50: #ffffff;
+  --lg-100: #f7f8f8;
+  --lg-200: #f4f4f4;
+  --lg-300: #eceff0;
+  --lg-400: #dde2e3;
+  --lg-500: #ccd3d5;
+  --lg-600: #b8c5ca;
+  --lg-700: #8d9aa1;
+  --lg-800: #7a8890;
+  --lg-900: #4c5a68;
+  --lg-950: #292e3a;
+
+  /* ---- Status ---- */
+  --success: #04ca72;
+  --success-tint: #e7f9f0;
+  --warning: #eab308;
+  --warning-tint: #fff8e7;
+  --error: #ef4444;
+  --error-tint: #fef2f2;
+
+  /* ---- Semantic (WLTH design-system mapping) ---- */
+  --surface: var(--lg-50); /* cards / elevated */
+  --surface-muted: var(--lg-100);
+  --primary: var(--rb-500);
+  --primary-hover: var(--rb-600);
+  --primary-tint: var(--rb-50);
+  --on-dark-accent: var(--rb-300); /* accent that reads on the dark hero */
+  --radius: 1rem;
+  --radius-card: 1.5rem;
+  --radius-pill: 9999px;
+
+  /* ---- Legacy variable names used across the app, remapped to the DS ---- */
+  --navy: var(--db-600);
+  --blue: var(--rb-500);
+  --blue-hover: var(--rb-600);
+  --aqua: var(--success); /* the DS has no cyan — WLTH green is the accent */
+  --white: var(--lg-50);
+  --bg: var(--lg-200);
+  --ink: var(--db-500);
+  --muted: var(--lg-900);
+  --line: var(--lg-400);
+}
+
+html,
+body {
+  font-family:
+    'SuisseIntl', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
