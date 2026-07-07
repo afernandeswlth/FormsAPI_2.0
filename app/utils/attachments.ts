@@ -1,33 +1,17 @@
+import { createClient } from '@supabase/supabase-js'
+
 /**
- * Client-side attachment processing.
+ * Client-side attachment handling.
  *
- * Uploads are sent as base64 inside the JSON request body, and Vercel's
- * serverless functions reject bodies over ~4.5MB. So we downscale + JPEG-
- * compress images before upload (phone photos are often 3-8MB) and keep the
- * total under the limit. PDFs and undecodable images pass through unchanged and
- * are size-guarded by the caller.
+ * Files are uploaded straight to Supabase Storage (via a server-issued signed
+ * URL) so they don't travel through Vercel's ~4.5MB request body — the form
+ * submission only carries a small storage `path`. Photos are downscaled +
+ * JPEG-compressed first to keep the final combined PDF/email reasonable.
  */
-export type ProcessedAttachment = { name: string; type: string; size: number; content: string }
+export type ProcessedAttachment = { name: string; type: string; size: number; path: string }
 
-// Per-file and total caps for the encoded content (leaves margin under 4.5MB).
-export const MAX_ATTACHMENT_BYTES = 3.5 * 1024 * 1024
-export const MAX_TOTAL_ATTACHMENT_BYTES = 4 * 1024 * 1024
-
-/** Approximate decoded byte size of a base64 data URL. */
-export function dataUrlBytes(dataUrl: string): number {
-  const i = dataUrl.indexOf(',')
-  const b64 = i >= 0 ? dataUrl.slice(i + 1) : dataUrl
-  return Math.floor(b64.length * 0.75)
-}
-
-function readAsDataURL(file: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const r = new FileReader()
-    r.onload = () => resolve(r.result as string)
-    r.onerror = () => reject(r.error)
-    r.readAsDataURL(file)
-  })
-}
+// Gmail's attachment ceiling — total across all files on a submission.
+export const MAX_TOTAL_ATTACHMENT_BYTES = 25 * 1024 * 1024
 
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -38,10 +22,11 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   })
 }
 
-/** Downscale to <=2000px on the long edge and JPEG-compress under the size cap. */
-async function compressImage(file: File): Promise<ProcessedAttachment | null> {
+/** Downscale to <=2000px on the long edge and JPEG-compress. Returns null on failure. */
+async function compressImage(file: File): Promise<{ blob: Blob; name: string } | null> {
+  const url = URL.createObjectURL(file)
   try {
-    const img = await loadImage(await readAsDataURL(file))
+    const img = await loadImage(url)
     const maxDim = 2000
     const scale = Math.min(1, maxDim / Math.max(img.width, img.height))
     const w = Math.max(1, Math.round(img.width * scale))
@@ -51,28 +36,48 @@ async function compressImage(file: File): Promise<ProcessedAttachment | null> {
     canvas.height = h
     const ctx = canvas.getContext('2d')
     if (!ctx) return null
-    ctx.fillStyle = '#ffffff' // flatten any transparency for JPEG
+    ctx.fillStyle = '#ffffff'
     ctx.fillRect(0, 0, w, h)
     ctx.drawImage(img, 0, 0, w, h)
-    let content = canvas.toDataURL('image/jpeg', 0.72)
-    for (const q of [0.6, 0.5, 0.4]) {
-      if (dataUrlBytes(content) <= MAX_ATTACHMENT_BYTES) break
-      content = canvas.toDataURL('image/jpeg', q)
-    }
-    const name = file.name.replace(/\.[^.]+$/, '') + '.jpg'
-    return { name, type: 'image/jpeg', size: dataUrlBytes(content), content }
+    const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, 'image/jpeg', 0.72))
+    if (!blob) return null
+    return { blob, name: file.name.replace(/\.[^.]+$/, '') + '.jpg' }
   } catch {
     return null
+  } finally {
+    URL.revokeObjectURL(url)
   }
 }
 
-/** Turn a File into an upload-ready attachment (compressing images when possible). */
+/** Upload a blob to Supabase Storage via a server-issued signed URL; returns the path. */
+async function signAndUpload(body: Blob, filename: string, type: string): Promise<string> {
+  const sign = await $fetch<{
+    supabaseUrl: string
+    anonKey: string
+    bucket: string
+    path: string
+    token: string
+  }>('/api/uploads/sign', { method: 'POST', body: { filename, type } })
+
+  const supabase = createClient(sign.supabaseUrl, sign.anonKey)
+  const { error } = await supabase.storage
+    .from(sign.bucket)
+    .uploadToSignedUrl(sign.path, sign.token, body, { contentType: type })
+  if (error) throw new Error(error.message)
+  return sign.path
+}
+
+/** Compress (if an image) and upload a file; returns an upload-ready attachment record. */
 export async function processFile(file: File): Promise<ProcessedAttachment> {
   const compressible = ['image/png', 'image/jpeg', 'image/webp']
   if (compressible.includes(file.type)) {
-    const compressed = await compressImage(file)
-    if (compressed) return compressed
+    const c = await compressImage(file)
+    if (c) {
+      const path = await signAndUpload(c.blob, c.name, 'image/jpeg')
+      return { name: c.name, type: 'image/jpeg', size: c.blob.size, path }
+    }
   }
-  const content = await readAsDataURL(file)
-  return { name: file.name, type: file.type, size: file.size, content }
+  const type = file.type || 'application/octet-stream'
+  const path = await signAndUpload(file, file.name, type)
+  return { name: file.name, type, size: file.size, path }
 }

@@ -1,6 +1,7 @@
 import { PDFDocument, PDFName, StandardFonts, rgb, type PDFForm } from 'pdf-lib'
 import { createError } from 'h3'
 import { HUB_OPTIONS, type RequestType, type ServicingRequest } from '~~/server/types/requests'
+import { downloadAttachment } from '~~/server/utils/supabase'
 
 /**
  * Fills the official WLTH PDF template for a submitted request, returning the
@@ -872,16 +873,16 @@ async function embedImageAny(pdf: PDFDocument, buf: Buffer, type: string, dataUr
  * so nothing is silently dropped.
  */
 async function appendAttachments(pdf: PDFDocument, rec: ServicingRequest) {
-  const atts = (rec.details as { attachments?: Array<{ name?: string; type?: string; content?: string }> })
+  const atts = (rec.details as { attachments?: Array<{ name?: string; type?: string; path?: string }> })
     ?.attachments
   if (!atts?.length) return
 
   for (const att of atts) {
-    const dataUrl = att?.content
-    if (!dataUrl || !dataUrl.includes(',')) continue
-    const buf = Buffer.from(dataUrl.split(',')[1]!, 'base64')
+    if (!att?.path) continue
+    const buf = await downloadAttachment(att.path)
+    if (!buf) continue
     const type = (att.type || '').toLowerCase()
-    const isPdf = type.includes('pdf') || dataUrl.slice(0, 40).toLowerCase().includes('application/pdf')
+    const isPdf = type.includes('pdf') || att.path.toLowerCase().endsWith('.pdf')
 
     if (isPdf) {
       try {

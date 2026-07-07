@@ -65,9 +65,9 @@ const linkedAccountSchema = z.object({
 const attachmentSchema = z.object({
   name: z.string().min(1),
   type: z.string(),
-  size: z.number().int().nonnegative().max(10 * 1024 * 1024, 'File exceeds 10MB'),
-  // base64 data URL (PDF or image)
-  content: z.string().regex(/^data:.+;base64,/, 'Invalid file content'),
+  size: z.number().int().nonnegative().max(25 * 1024 * 1024, 'File exceeds 25MB'),
+  // Supabase Storage path (uploaded directly from the browser).
+  path: z.string().min(1, 'Missing upload reference'),
 })
 
 const signatureSchema = z.object({
