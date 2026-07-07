@@ -198,8 +198,8 @@ function downloadCopy() {
             <h2>Offset Account Variation Fee</h2>
             <p class="fee-note">
               A <strong>$250.00 Offset Account Variation Fee</strong> applies. This fee
-              can be paid either from available redraw funds or by direct debit from the
-              borrower's nominated account.
+              can be paid either from available redraw funds or by direct debit from your
+              nominated account.
             </p>
 
             <h3>How would you like to pay the $250.00 fee? <span class="req">*</span></h3>

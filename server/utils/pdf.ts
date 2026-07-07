@@ -620,19 +620,15 @@ async function fillOpenOffset(pdf: PDFDocument, form: PDFForm, rec: ServicingReq
 
   // $250 variation fee + the borrower's selected payment method, drawn in the
   // large white space beneath the signature section.
-  const feeLabel: Record<string, string> = {
-    redraw: 'Available Redraw',
-    'direct-debit': 'Direct Debit from Nominated Account',
+  const feeComment: Record<string, string> = {
+    redraw: 'Please debit the $250 variation fee from my Redraw.',
+    'direct-debit': 'Please Direct Debit the $250 Variation fee from my nominated account.',
   }
-  const method = feeLabel[d.feePayment] ?? ''
+  const comment = feeComment[d.feePayment] ?? ''
   const ink = rgb(0.12, 0.14, 0.18)
   page.drawText('$250.00 Offset Account Variation Fee', { x: 45, y: 340, size: 11, font: fontBold, color: ink })
-  page.drawText(
-    'This fee can be paid from available redraw funds or by direct debit from the nominated account.',
-    { x: 45, y: 323, size: 8.5, font, color: rgb(0.36, 0.4, 0.46) },
-  )
-  if (method) {
-    page.drawText(`Selected payment method:  ${method}`, { x: 45, y: 302, size: 10, font: fontBold, color: ink })
+  if (comment) {
+    page.drawText(comment, { x: 45, y: 320, size: 10, font, color: ink })
   }
 }
 
