@@ -53,7 +53,8 @@ export async function emailRequestPdf(
   const { error } = await resend.emails.send({
     from,
     to,
-    subject: `New ${title} — ${rec.reference}`,
+    // e.g. "Direct Debit Request - John Smith 400000"
+    subject: `${title} - ${name} ${rec.loanAccountNumber}`,
     html,
     attachments: [{ filename, content: Buffer.from(pdfBytes) }],
   })
