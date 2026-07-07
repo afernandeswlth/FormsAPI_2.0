@@ -124,6 +124,11 @@ const formRoutes: Record<string, string> = {
   background: linear-gradient(160deg, var(--db-500) 0%, var(--db-600) 45%, var(--db-800) 100%);
   color: var(--white);
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  /* Grow the hero with the viewport so the banner isn't cropped into a
+     thin, zoomed-in band on wide screens — capped so it never dominates. */
+  min-height: clamp(360px, 30vw, 560px);
 }
 .hero__bg {
   position: absolute;
@@ -169,12 +174,17 @@ const formRoutes: Record<string, string> = {
   color: var(--white);
 }
 .hero__body {
+  flex: 1;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: var(--sp-3);
-  padding-top: var(--sp-6);
-  padding-bottom: var(--sp-12);
+  padding-top: var(--sp-5);
+  padding-bottom: var(--sp-6);
+}
+/* Keep the Certified badge in the clean top-right water, not over the turtle */
+.hero__badge {
+  align-self: flex-start;
 }
 .hero__title {
   font-size: clamp(2.4rem, 5vw, 3.6rem);
@@ -232,12 +242,14 @@ const formRoutes: Record<string, string> = {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 24px;
+  gap: clamp(20px, 2.2vw, 36px);
   padding-bottom: 24px;
 }
 .card {
-  flex: 1 1 220px;
-  max-width: 250px;
+  /* Percentage basis guarantees 4-per-row (never a stray 5th) and lets the
+     cards grow to fill the wider container instead of leaving side gutters. */
+  flex: 1 1 calc(25% - 27px);
+  max-width: 340px;
   min-width: 220px;
   background: var(--white);
   border-radius: var(--radius-card);
@@ -366,6 +378,19 @@ const formRoutes: Record<string, string> = {
   color: rgba(255, 255, 255, 0.3);
   font-style: normal;
   margin: 0 8px;
+}
+
+/* Cards: 4-up → 2-up → 1-up */
+@media (max-width: 980px) {
+  .card {
+    flex-basis: calc(50% - 18px);
+  }
+}
+@media (max-width: 560px) {
+  .card {
+    flex-basis: 100%;
+    max-width: 420px;
+  }
 }
 
 @media (max-width: 760px) {
