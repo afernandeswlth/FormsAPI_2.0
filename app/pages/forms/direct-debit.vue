@@ -1,5 +1,11 @@
 <script setup lang="ts">
 import { icons } from '../../assets/icons'
+import {
+  processFile,
+  dataUrlBytes,
+  MAX_ATTACHMENT_BYTES,
+  MAX_TOTAL_ATTACHMENT_BYTES,
+} from '../../utils/attachments'
 
 useHead({ title: 'Direct Debit Request — WLTH Client Hub' })
 
@@ -59,29 +65,31 @@ const dragging = ref(false)
 const MAX_FILE_BYTES = 10 * 1024 * 1024 // 10MB
 const ACCEPTED = ['application/pdf', 'image/png', 'image/jpeg', 'image/heic', 'image/webp']
 
-function readAsDataURL(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result as string)
-    reader.onerror = () => reject(reader.error)
-    reader.readAsDataURL(file)
-  })
-}
-
 async function addFiles(files: FileList | File[]) {
   attachmentError.value = ''
+  const next = [...attachments.value]
   for (const f of Array.from(files)) {
-    if (f.size > MAX_FILE_BYTES) {
-      attachmentError.value = `${f.name} is larger than 10MB.`
-      continue
-    }
     if (f.type && !ACCEPTED.includes(f.type)) {
       attachmentError.value = `${f.name} is not a supported file type (PDF or image).`
       continue
     }
-    const content = await readAsDataURL(f)
-    attachments.value.push({ name: f.name, type: f.type, size: f.size, content })
+    if (f.size > MAX_FILE_BYTES) {
+      attachmentError.value = `${f.name} is too large. Please upload a file under 10MB.`
+      continue
+    }
+    const processed = await processFile(f)
+    if (dataUrlBytes(processed.content) > MAX_ATTACHMENT_BYTES) {
+      attachmentError.value = `${f.name} is too large to upload (max ~3MB per file). If it's a PDF, please upload a smaller file or a photo.`
+      continue
+    }
+    const total = next.reduce((s, a) => s + dataUrlBytes(a.content), 0) + dataUrlBytes(processed.content)
+    if (total > MAX_TOTAL_ATTACHMENT_BYTES) {
+      attachmentError.value = `These files are too large in total (max ~4MB). Please remove one or upload smaller files.`
+      continue
+    }
+    next.push(processed)
   }
+  attachments.value = next
 }
 
 async function onFileInput(e: Event) {

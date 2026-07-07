@@ -1,5 +1,11 @@
 <script setup lang="ts">
 import { icons } from '../assets/icons'
+import {
+  processFile,
+  dataUrlBytes,
+  MAX_ATTACHMENT_BYTES,
+  MAX_TOTAL_ATTACHMENT_BYTES,
+} from '../utils/attachments'
 
 export type Attachment = { name: string; type: string; size: number; content: string }
 
@@ -43,28 +49,30 @@ const ACCEPTED = [
 
 const met = computed(() => files.value.length >= props.requiredCount)
 
-function readAsDataURL(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result as string)
-    reader.onerror = () => reject(reader.error)
-    reader.readAsDataURL(file)
-  })
-}
-
 async function addFiles(list: FileList | File[]) {
   error.value = ''
   const next = [...files.value]
   for (const f of Array.from(list)) {
-    if (f.size > props.maxBytes) {
-      error.value = `${f.name} is larger than 10MB.`
-      continue
-    }
     if (f.type && !ACCEPTED.includes(f.type)) {
       error.value = `${f.name} is not a supported file type (PDF or image).`
       continue
     }
-    next.push({ name: f.name, type: f.type, size: f.size, content: await readAsDataURL(f) })
+    // Avoid processing absurdly large originals (images are compressed below).
+    if (f.size > props.maxBytes) {
+      error.value = `${f.name} is too large. Please upload a file under 10MB.`
+      continue
+    }
+    const processed = await processFile(f)
+    if (dataUrlBytes(processed.content) > MAX_ATTACHMENT_BYTES) {
+      error.value = `${f.name} is too large to upload (max ~3MB per file). If it's a PDF, please upload a smaller file or a photo.`
+      continue
+    }
+    const total = next.reduce((s, a) => s + dataUrlBytes(a.content), 0) + dataUrlBytes(processed.content)
+    if (total > MAX_TOTAL_ATTACHMENT_BYTES) {
+      error.value = `These files are too large in total (max ~4MB). Please remove one or upload smaller files.`
+      continue
+    }
+    next.push(processed)
   }
   files.value = next
 }
