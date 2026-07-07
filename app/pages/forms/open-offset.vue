@@ -30,6 +30,21 @@ const feeMethodLabel = computed(() =>
       : '',
 )
 
+// Mutually-exclusive checkboxes: each is checked when it is the chosen method,
+// and selecting one switches the choice (v-model keeps the tick in sync).
+const redrawChecked = computed({
+  get: () => feePayment.value === 'redraw',
+  set: (v) => {
+    if (v) feePayment.value = 'redraw'
+  },
+})
+const ddChecked = computed({
+  get: () => feePayment.value === 'direct-debit',
+  set: (v) => {
+    if (v) feePayment.value = 'direct-debit'
+  },
+})
+
 watch(borrowerCount, (n) => {
   const cur = signatures.value
   signatures.value =
@@ -205,19 +220,11 @@ function downloadCopy() {
             <h3>How would you like to pay the $250.00 fee? <span class="req">*</span></h3>
             <div class="radios">
               <label class="radio" :class="{ 'is-selected': feePayment === 'redraw' }">
-                <input
-                  type="checkbox"
-                  :checked="feePayment === 'redraw'"
-                  @click.prevent="feePayment = 'redraw'"
-                />
+                <input type="checkbox" v-model="redrawChecked" />
                 <span>Available Redraw</span>
               </label>
               <label class="radio" :class="{ 'is-selected': feePayment === 'direct-debit' }">
-                <input
-                  type="checkbox"
-                  :checked="feePayment === 'direct-debit'"
-                  @click.prevent="feePayment = 'direct-debit'"
-                />
+                <input type="checkbox" v-model="ddChecked" />
                 <span>Direct Debit from Nominated Account</span>
               </label>
             </div>
