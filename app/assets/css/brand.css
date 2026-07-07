@@ -92,6 +92,36 @@
   --ink: var(--db-500);
   --muted: var(--lg-900);
   --line: var(--lg-400);
+
+  /* ============================================================
+     WLTH Client Hub — reusable landing tokens
+     The Design System ships no cyan, but the WLTH brand hero uses a
+     turquoise accent (per the desired-design screenshot, which is the
+     primary source of truth). Defined here so it is never hardcoded.
+     ============================================================ */
+  --wlth-primary: var(--rb-500); /* royal blue — card icons, arrows */
+  --wlth-primary-hover: var(--rb-600);
+  --wlth-secondary: var(--db-600); /* dark navy — hero, footer */
+  --wlth-turquoise: #00d9e7; /* cyan accent — hero WLTH, slogan, band, footer */
+  --wlth-background: #eef2f6; /* soft cool light grey — page surface */
+  --wlth-surface: var(--lg-50); /* white — cards */
+  --wlth-text: var(--db-600); /* headings ink */
+  --wlth-muted: var(--lg-900); /* secondary / body grey */
+  --wlth-border: rgba(16, 42, 62, 0.06); /* hairline card border */
+  --wlth-icon-tint: var(--rb-50); /* pale blue icon circle */
+  /* Soft, diffuse, low-opacity elevation (no harsh drop shadows) */
+  --wlth-shadow: 0 10px 30px rgba(16, 42, 62, 0.08);
+  --wlth-shadow-hover: 0 18px 44px rgba(20, 69, 199, 0.16);
+
+  /* ---- 8px spacing scale ---- */
+  --sp-1: 8px;
+  --sp-2: 16px;
+  --sp-3: 24px;
+  --sp-4: 32px;
+  --sp-5: 40px;
+  --sp-6: 48px;
+  --sp-8: 64px;
+  --sp-12: 96px;
 }
 
 html,

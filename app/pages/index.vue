@@ -141,13 +141,19 @@ const formRoutes: Record<string, string> = {
   position: absolute;
   inset: 0;
   z-index: -1;
+  /* Dark on the left for text legibility, clearing to reveal the turtle
+     on the right — matches the desired-design crop. */
   background: linear-gradient(
     90deg,
-    rgba(15, 27, 41, 0.92) 0%,
-    rgba(15, 27, 41, 0.7) 38%,
-    rgba(15, 27, 41, 0.25) 70%,
-    rgba(15, 27, 41, 0.45) 100%
+    rgba(15, 27, 41, 0.94) 0%,
+    rgba(15, 27, 41, 0.72) 40%,
+    rgba(15, 27, 41, 0.28) 72%,
+    rgba(15, 27, 41, 0.12) 100%
   );
+}
+/* Hero brand accent — turquoise (screenshot source of truth) */
+.hero .accent {
+  color: var(--wlth-turquoise);
 }
 .hero__nav {
   display: flex;
@@ -161,11 +167,11 @@ const formRoutes: Record<string, string> = {
 }
 .hero__body {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 24px;
-  padding-top: 56px;
-  padding-bottom: 96px;
+  gap: var(--sp-3);
+  padding-top: var(--sp-6);
+  padding-bottom: var(--sp-12);
 }
 .hero__title {
   font-size: clamp(2.4rem, 5vw, 3.6rem);
@@ -197,7 +203,7 @@ const formRoutes: Record<string, string> = {
 
 /* ---------- MAIN ---------- */
 .main {
-  background: var(--bg);
+  background: var(--wlth-background);
 }
 .main__head {
   text-align: center;
@@ -234,8 +240,8 @@ const formRoutes: Record<string, string> = {
   text-align: center;
   text-decoration: none;
   color: inherit;
-  box-shadow: 0 10px 30px rgba(16, 42, 62, 0.08);
-  border: 1px solid rgba(16, 42, 62, 0.04);
+  box-shadow: var(--wlth-shadow);
+  border: 1px solid var(--wlth-border);
   transition: transform 0.18s ease, box-shadow 0.18s ease;
   display: flex;
   flex-direction: column;
@@ -244,7 +250,7 @@ const formRoutes: Record<string, string> = {
 .card:hover,
 .card:focus-visible {
   transform: translateY(-4px);
-  box-shadow: 0 18px 44px rgba(20, 69, 199, 0.16);
+  box-shadow: var(--wlth-shadow-hover);
   outline: none;
 }
 .card__icon {
@@ -314,7 +320,7 @@ const formRoutes: Record<string, string> = {
   line-height: 1.45;
 }
 .band__icon {
-  color: var(--blue);
+  color: var(--wlth-turquoise);
   flex-shrink: 0;
 }
 .band__icon :deep(svg) {
@@ -346,7 +352,7 @@ const formRoutes: Record<string, string> = {
   width: auto;
 }
 .footer__site b {
-  color: var(--aqua);
+  color: var(--wlth-turquoise);
 }
 .footer__legal {
   margin-left: auto;
