@@ -17,10 +17,11 @@ body {
 
 .container {
   width: 100%;
-  max-width: 1600px;
+  /* Scale with the viewport (small proportional gutters) up to a 2000px cap so
+     large monitors are actually used instead of boxed into a narrow column. */
+  max-width: min(2000px, 96vw);
   margin: 0 auto;
-  /* Fluid gutters that grow with the viewport */
-  padding: 0 clamp(20px, 4vw, 64px);
+  padding: 0 clamp(16px, 2.5vw, 44px);
 }
 
 .accent {

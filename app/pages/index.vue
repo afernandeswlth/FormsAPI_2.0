@@ -128,7 +128,7 @@ const formRoutes: Record<string, string> = {
   flex-direction: column;
   /* Grow the hero with the viewport so the banner isn't cropped into a
      thin, zoomed-in band on wide screens — capped so it never dominates. */
-  min-height: clamp(360px, 30vw, 560px);
+  min-height: clamp(360px, 32vw, 660px);
 }
 .hero__bg {
   position: absolute;
@@ -242,14 +242,14 @@ const formRoutes: Record<string, string> = {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: clamp(20px, 2.2vw, 36px);
+  gap: clamp(20px, 2.2vw, 44px);
   padding-bottom: 24px;
 }
 .card {
   /* Percentage basis guarantees 4-per-row (never a stray 5th) and lets the
      cards grow to fill the wider container instead of leaving side gutters. */
-  flex: 1 1 calc(25% - 27px);
-  max-width: 340px;
+  flex: 1 1 calc(25% - 33px);
+  max-width: 420px;
   min-width: 220px;
   background: var(--white);
   border-radius: var(--radius-card);
@@ -378,6 +378,31 @@ const formRoutes: Record<string, string> = {
   color: rgba(255, 255, 255, 0.3);
   font-style: normal;
   margin: 0 8px;
+}
+
+/* Large monitors: scale card internals so the wider cards stay proportionate */
+@media (min-width: 1700px) {
+  .card {
+    padding: 44px 36px 32px;
+  }
+  .card__icon {
+    width: 92px;
+    height: 92px;
+    margin-bottom: 26px;
+  }
+  .card__icon :deep(svg) {
+    width: 42px;
+    height: 42px;
+  }
+  .card__title {
+    font-size: 1.3rem;
+  }
+  .card__desc {
+    font-size: 1.02rem;
+  }
+  .main__title {
+    font-size: 2.4rem;
+  }
 }
 
 /* Cards: 4-up → 2-up → 1-up */
