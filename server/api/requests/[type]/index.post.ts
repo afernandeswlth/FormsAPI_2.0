@@ -8,6 +8,8 @@ import {
 import { getRequestType } from '~~/server/utils/guards'
 import { bodySchemas } from '~~/server/utils/validation'
 import { createRequest } from '~~/server/utils/store'
+import { fillTemplate } from '~~/server/utils/pdf'
+import { emailRequestPdf } from '~~/server/utils/mail'
 
 /**
  * POST /api/requests/:type
@@ -37,6 +39,17 @@ export default defineEventHandler(async (event) => {
     ...(parsed.data as Record<string, unknown>),
     serverAudit,
   } as never)
+
+  // Generate the completed PDF and email it to the servicing inbox. Awaited so
+  // it finishes before the serverless function ends, but never blocks or fails
+  // the submission — any error is logged and the client still gets its reference.
+  try {
+    const { bytes, filename } = await fillTemplate(record)
+    await emailRequestPdf(record, bytes, filename)
+  } catch (err) {
+    console.error(`[mail] failed to email request ${record.reference}:`, err)
+  }
+
   setResponseStatus(event, 201)
   return record
 })
