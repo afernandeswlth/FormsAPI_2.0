@@ -581,14 +581,59 @@ async function fillOpenOffset(pdf: PDFDocument, form: PDFForm, rec: ServicingReq
     setText(form, nameF[i]!, fullName(x))
     setText(form, dateF[i]!, isoDate(d.signatures?.[i]?.signedAt))
   })
-  const png = await embedSig(pdf, d.signatures?.[0]?.image)
+  // Signature panel geometry + each borrower's signature (captured before flatten).
   const g = fieldGeom(form, pages, 'S1')
+  const sigPngs: any[] = []
+  for (let i = 0; i < b.length && i < 4; i++) {
+    sigPngs.push(await embedSig(pdf, d.signatures?.[i]?.image))
+  }
+  const font = await pdf.embedFont(StandardFonts.Helvetica)
+  const fontBold = await pdf.embedFont(StandardFonts.HelveticaBold)
+
   try {
     form.flatten()
   } catch {
     /* ignore */
   }
-  if (png && g) drawSigImage(g.page, png, g.r, { maxW: Math.min(g.r.width, 220), maxH: Math.min(g.r.height, 42) })
+
+  const page = g?.page ?? pages[0]!
+
+  // Split the single signature panel into four equal columns so every borrower's
+  // signature fits side-by-side within the same panel (was: only borrower 1).
+  if (g) {
+    const cellW = g.r.width / 4
+    const maxH = g.r.height - 8
+    for (let i = 0; i < sigPngs.length; i++) {
+      const png = sigPngs[i]
+      if (!png) continue
+      const sc = Math.min((cellW - 12) / png.width, maxH / png.height)
+      const w = png.width * sc
+      const h = png.height * sc
+      page.drawImage(png, {
+        x: g.r.x + i * cellW + (cellW - w) / 2, // centred in its column
+        y: g.r.y + (g.r.height - h) / 2,
+        width: w,
+        height: h,
+      })
+    }
+  }
+
+  // $250 variation fee + the borrower's selected payment method, drawn in the
+  // large white space beneath the signature section.
+  const feeLabel: Record<string, string> = {
+    redraw: 'Available Redraw',
+    'direct-debit': 'Direct Debit from Nominated Account',
+  }
+  const method = feeLabel[d.feePayment] ?? ''
+  const ink = rgb(0.12, 0.14, 0.18)
+  page.drawText('$250.00 Offset Account Variation Fee', { x: 45, y: 340, size: 11, font: fontBold, color: ink })
+  page.drawText(
+    'This fee can be paid from available redraw funds or by direct debit from the nominated account.',
+    { x: 45, y: 323, size: 8.5, font, color: rgb(0.36, 0.4, 0.46) },
+  )
+  if (method) {
+    page.drawText(`Selected payment method:  ${method}`, { x: 45, y: 302, size: 10, font: fontBold, color: ink })
+  }
 }
 
 // ---------------------------------------------------------------------------

@@ -18,8 +18,17 @@ const borrowers = ref<Borrower[]>([
   { firstName: '', lastName: '', mobile: '', email: '', customerNumber: '' },
 ])
 const loan = ref({ accountNumber: '', comments: '' })
+const feePayment = ref<'' | 'redraw' | 'direct-debit'>('')
 const agreed = ref(false)
 const signatures = ref<string[]>([''])
+
+const feeMethodLabel = computed(() =>
+  feePayment.value === 'redraw'
+    ? 'Available Redraw'
+    : feePayment.value === 'direct-debit'
+      ? 'Direct Debit from Nominated Account'
+      : '',
+)
 
 watch(borrowerCount, (n) => {
   const cur = signatures.value
@@ -46,6 +55,7 @@ function validateStep(i: number): string[] {
     })
   } else if (i === 1) {
     if (!loan.value.accountNumber.trim()) e.push('Loan account number is required')
+    if (!feePayment.value) e.push('Select how the $250 variation fee will be paid')
   } else if (i === 3) {
     if (!agreed.value) e.push('You must confirm the declaration')
     signatures.value.forEach((s, idx) => {
@@ -98,6 +108,7 @@ async function submit() {
     },
     loanAccountNumber: loan.value.accountNumber,
     borrowers: borrowers.value,
+    feePayment: feePayment.value,
     declaration: { agreed: agreed.value },
     signatures: signatures.value.map((image, borrowerIndex) => ({
       borrowerIndex,
@@ -132,6 +143,7 @@ function downloadCopy() {
     result.value ? `Reference: ${result.value.reference}` : '',
     '',
     `Loan Account: ${loan.value.accountNumber}`,
+    `$250 Variation Fee paid via: ${feeMethodLabel.value}`,
     '',
     'Borrowers:',
     ...borrowers.value.map(
@@ -181,6 +193,35 @@ function downloadCopy() {
         <div v-if="step === 1" class="stack">
           <LoanStep v-model:loan="loan" title="Loan To Link Offset Account" />
           <OffsetInformationCard />
+
+          <div class="card">
+            <h2>Offset Account Variation Fee</h2>
+            <p class="fee-note">
+              A <strong>$250.00 Offset Account Variation Fee</strong> applies. This fee
+              can be paid either from available redraw funds or by direct debit from the
+              borrower's nominated account.
+            </p>
+
+            <h3>How would you like to pay the $250.00 fee? <span class="req">*</span></h3>
+            <div class="radios">
+              <label class="radio" :class="{ 'is-selected': feePayment === 'redraw' }">
+                <input
+                  type="checkbox"
+                  :checked="feePayment === 'redraw'"
+                  @click.prevent="feePayment = 'redraw'"
+                />
+                <span>Available Redraw</span>
+              </label>
+              <label class="radio" :class="{ 'is-selected': feePayment === 'direct-debit' }">
+                <input
+                  type="checkbox"
+                  :checked="feePayment === 'direct-debit'"
+                  @click.prevent="feePayment = 'direct-debit'"
+                />
+                <span>Direct Debit from Nominated Account</span>
+              </label>
+            </div>
+          </div>
         </div>
 
         <!-- Review -->
@@ -198,6 +239,9 @@ function downloadCopy() {
           <ReviewCard title="Loan" @edit="goTo(1)">
             <div class="review__row">
               <strong>Loan Account Number</strong><span>{{ loan.accountNumber }}</span>
+            </div>
+            <div class="review__row">
+              <strong>$250 Variation Fee</strong><span>{{ feeMethodLabel }}</span>
             </div>
           </ReviewCard>
         </div>
@@ -243,3 +287,19 @@ function downloadCopy() {
     </main>
   </div>
 </template>
+
+<style scoped>
+.fee-note {
+  margin: 0 0 8px;
+  padding: 14px 16px;
+  background: var(--surface-muted);
+  border: 1px solid var(--line);
+  border-left: 5px solid var(--aqua);
+  border-radius: 12px;
+  color: var(--ink);
+  line-height: 1.55;
+}
+.fee-note strong {
+  color: var(--navy);
+}
+</style>

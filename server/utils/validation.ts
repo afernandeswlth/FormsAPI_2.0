@@ -237,6 +237,10 @@ const offsetBorrowerSchema = borrowerSchema.extend({
 const openOffset = baseSchema
   .extend({
     borrowers: z.array(offsetBorrowerSchema).min(1).max(4),
+    // How the $250 Offset Account Variation Fee will be paid.
+    feePayment: z.enum(['redraw', 'direct-debit'], {
+      errorMap: () => ({ message: 'Select how the $250 variation fee will be paid' }),
+    }),
     declaration: z.object({
       agreed: z.literal(true, {
         errorMap: () => ({ message: 'You must confirm the declaration' }),
