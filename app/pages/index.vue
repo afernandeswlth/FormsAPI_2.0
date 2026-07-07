@@ -4,7 +4,7 @@ import { icons } from '../assets/icons'
 const { data: hub } = await useFetch('/api/hub')
 
 // Ocean hero photography (sea turtle), served from public/.
-const heroSrc = '/hero-turtle.jpg'
+const heroSrc = '/hero-turtle.png'
 const heroLoaded = ref(true)
 
 // Map each request type to its in-app form route (only direct-debit so far).
@@ -131,7 +131,7 @@ const formRoutes: Record<string, string> = {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center 30%;
+  object-position: center center;
   z-index: -2;
 }
 .hero__bg.is-hidden {
@@ -162,12 +162,15 @@ const formRoutes: Record<string, string> = {
   padding-top: 28px;
   padding-bottom: 8px;
 }
+.hero__nav :deep(svg) {
+  filter: drop-shadow(0 1px 4px rgba(6, 13, 22, 0.5));
+}
 .logo--light :deep(svg) {
   color: var(--white);
 }
 .hero__body {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: var(--sp-3);
   padding-top: var(--sp-6);
@@ -199,6 +202,8 @@ const formRoutes: Record<string, string> = {
   width: 96px;
   height: auto;
   color: var(--white);
+  /* Brand mark sits over photography — soft shadow keeps it crisp */
+  filter: drop-shadow(0 2px 8px rgba(6, 13, 22, 0.65));
 }
 
 /* ---------- MAIN ---------- */
