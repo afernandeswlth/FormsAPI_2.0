@@ -113,6 +113,10 @@
   --wlth-shadow: 0 10px 30px rgba(16, 42, 62, 0.08);
   --wlth-shadow-hover: 0 18px 44px rgba(20, 69, 199, 0.16);
 
+  /* Shared width for the multi-step forms: near-full on laptops, capped on
+     monitors so fields stay a comfortable, professional length. */
+  --form-width: min(1320px, 92vw);
+
   /* ---- 8px spacing scale ---- */
   --sp-1: 8px;
   --sp-2: 16px;

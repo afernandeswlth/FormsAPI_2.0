@@ -631,7 +631,7 @@ By signing this request you acknowledge that you have read and understood this D
   align-items: center;
   justify-content: space-between;
   padding: 20px 24px;
-  max-width: 1120px;
+  max-width: var(--form-width);
   margin: 0 auto;
 }
 .topbar :deep(svg) {
@@ -671,6 +671,8 @@ By signing this request you acknowledge that you have read and understood this D
   justify-content: space-between;
   padding: 18px 24px;
   gap: 4px;
+  max-width: var(--form-width);
+  margin: 0 auto;
 }
 .progress__step {
   flex: 1;
@@ -741,7 +743,7 @@ By signing this request you acknowledge that you have read and understood this D
 
 /* Main */
 .ddr__main {
-  max-width: 900px;
+  max-width: var(--form-width);
   margin-top: 36px;
 }
 .stack {
