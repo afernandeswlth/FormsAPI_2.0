@@ -851,14 +851,85 @@ export function hasPdfTemplate(type: RequestType) {
   return type in FILLERS
 }
 
+/** Embed an image buffer as PNG or JPG (tries both, by hint then fallback). */
+async function embedImageAny(pdf: PDFDocument, buf: Buffer, type: string, dataUrl: string) {
+  const hint = `${type} ${dataUrl.slice(0, 30)}`.toLowerCase()
+  const order = hint.includes('png') ? (['png', 'jpg'] as const) : (['jpg', 'png'] as const)
+  for (const kind of order) {
+    try {
+      return kind === 'png' ? await pdf.embedPng(buf) : await pdf.embedJpg(buf)
+    } catch {
+      /* try the other decoder */
+    }
+  }
+  return null
+}
+
+/**
+ * Appends the request's uploaded documents to the end of the PDF so everything
+ * is one combined file. PDFs are merged page-for-page; images (photos) become a
+ * full A4 page each. Unsupported/unreadable files get a small placeholder page
+ * so nothing is silently dropped.
+ */
+async function appendAttachments(pdf: PDFDocument, rec: ServicingRequest) {
+  const atts = (rec.details as { attachments?: Array<{ name?: string; type?: string; content?: string }> })
+    ?.attachments
+  if (!atts?.length) return
+
+  for (const att of atts) {
+    const dataUrl = att?.content
+    if (!dataUrl || !dataUrl.includes(',')) continue
+    const buf = Buffer.from(dataUrl.split(',')[1]!, 'base64')
+    const type = (att.type || '').toLowerCase()
+    const isPdf = type.includes('pdf') || dataUrl.slice(0, 40).toLowerCase().includes('application/pdf')
+
+    if (isPdf) {
+      try {
+        const src = await PDFDocument.load(buf, { ignoreEncryption: true })
+        const copied = await pdf.copyPages(src, src.getPageIndices())
+        copied.forEach((p) => pdf.addPage(p))
+        continue
+      } catch {
+        /* fall through to placeholder */
+      }
+    } else {
+      const img = await embedImageAny(pdf, buf, type, dataUrl)
+      if (img) {
+        // Photo -> full A4 page, fitted with a margin, centred.
+        const page = pdf.addPage([595, 842])
+        const margin = 36
+        const sc = Math.min((595 - margin * 2) / img.width, (842 - margin * 2) / img.height)
+        const w = img.width * sc
+        const h = img.height * sc
+        page.drawImage(img, { x: (595 - w) / 2, y: (842 - h) / 2, width: w, height: h })
+        continue
+      }
+    }
+
+    // Unreadable or unsupported (e.g. HEIC/WebP) — leave a marker, don't drop it.
+    const page = pdf.addPage([595, 842])
+    const font = await pdf.embedFont(StandardFonts.Helvetica)
+    page.drawText(`Attachment: ${att.name || 'file'}`, { x: 40, y: 790, size: 12, font })
+    page.drawText(`(This file type could not be embedded: ${att.type || 'unknown'})`, {
+      x: 40,
+      y: 772,
+      size: 10,
+      font,
+      color: rgb(0.45, 0.5, 0.55),
+    })
+  }
+}
+
 export async function fillTemplate(
   rec: ServicingRequest,
 ): Promise<{ bytes: Uint8Array; filename: string }> {
   const filler = FILLERS[rec.type]
   // Forms without an official-template map get a clean WLTH summary PDF instead.
   if (!filler) {
-    const bytes = await generateSummaryPdf(rec)
-    return { bytes, filename: `${rec.reference}.pdf` }
+    const summary = await generateSummaryPdf(rec)
+    const pdf = await PDFDocument.load(summary)
+    await appendAttachments(pdf, rec)
+    return { bytes: await pdf.save(), filename: `${rec.reference}.pdf` }
   }
   const candidates: Array<[string, string]> = [
     ['assets:templates', `${rec.type}.pdf`],
@@ -881,6 +952,8 @@ export async function fillTemplate(
   } catch {
     /* some templates have signature fields that resist flatten; ignore */
   }
+  // Combine any uploaded documents (bank statements, photos) into this one PDF.
+  await appendAttachments(pdf, rec)
   const bytes = await pdf.save()
   return { bytes, filename: `${rec.reference}.pdf` }
 }
