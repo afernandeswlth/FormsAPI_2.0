@@ -1,4 +1,5 @@
 import { Resend } from 'resend'
+import { PDFDocument, StandardFonts } from 'pdf-lib'
 
 /**
  * TEMPORARY diagnostic — GET /api/_debug/mail
@@ -22,12 +23,21 @@ export default defineEventHandler(async () => {
     }
   }
 
+  // Build a tiny PDF so this test also verifies attachment delivery.
+  const doc = await PDFDocument.create()
+  const page = doc.addPage([320, 160])
+  const font = await doc.embedFont(StandardFonts.HelveticaBold)
+  page.drawText('WLTH Client Hub', { x: 24, y: 100, size: 18, font })
+  page.drawText('Test attachment — email is working.', { x: 24, y: 74, size: 11 })
+  const pdfBytes = await doc.save()
+
   const resend = new Resend(key)
   const { data, error } = await resend.emails.send({
     from,
     to,
-    subject: 'WLTH Client Hub — test email',
-    html: '<p>Test email from the WLTH Client Hub diagnostic. If this arrives, submitted-form PDFs will arrive here too.</p>',
+    subject: 'WLTH Client Hub — test email (with PDF)',
+    html: '<p>Test email from the WLTH Client Hub diagnostic, with a sample PDF attached. If the attachment is here, submitted-form PDFs will arrive too.</p>',
+    attachments: [{ filename: 'wlth-test.pdf', content: Buffer.from(pdfBytes) }],
   })
 
   return {

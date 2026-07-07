@@ -55,7 +55,7 @@ export async function emailRequestPdf(
     to,
     subject: `New ${title} — ${rec.reference}`,
     html,
-    attachments: [{ filename, content: Buffer.from(pdfBytes).toString('base64') }],
+    attachments: [{ filename, content: Buffer.from(pdfBytes) }],
   })
   if (error) {
     throw new Error(`Resend error: ${error.name} — ${error.message}`)
