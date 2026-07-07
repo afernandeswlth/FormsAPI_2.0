@@ -45,6 +45,12 @@ function blankAccount(): LinkedAccount {
 }
 watch(accountCount, (n) => resize(linkedAccounts, n, blankAccount))
 
+// Auto-format BSB as XXX-XXX: the client types digits only, the dash fills in.
+function onBsb(a: LinkedAccount, e: Event) {
+  const digits = (e.target as HTMLInputElement).value.replace(/\D/g, '').slice(0, 6)
+  a.bsb = digits.length > 3 ? `${digits.slice(0, 3)}-${digits.slice(3)}` : digits
+}
+
 // ---- Step 3: Bank statement attachment(s) ----
 type Attachment = { name: string; type: string; size: number; content: string }
 const attachments = ref<Attachment[]>([])
@@ -400,7 +406,14 @@ By signing this request you acknowledge that you have read and understood this D
               </label>
               <label class="field">
                 <span>BSB</span>
-                <input v-model="a.bsb" type="text" inputmode="numeric" placeholder="062-000" />
+                <input
+                  :value="a.bsb"
+                  type="text"
+                  inputmode="numeric"
+                  placeholder="062-000"
+                  maxlength="7"
+                  @input="onBsb(a, $event)"
+                />
               </label>
               <label class="field">
                 <span>Account Number</span>
