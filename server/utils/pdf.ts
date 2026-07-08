@@ -853,9 +853,8 @@ export function hasPdfTemplate(type: RequestType) {
 }
 
 /** Embed an image buffer as PNG or JPG (tries both, by hint then fallback). */
-async function embedImageAny(pdf: PDFDocument, buf: Buffer, type: string, dataUrl: string) {
-  const hint = `${type} ${dataUrl.slice(0, 30)}`.toLowerCase()
-  const order = hint.includes('png') ? (['png', 'jpg'] as const) : (['jpg', 'png'] as const)
+async function embedImageAny(pdf: PDFDocument, buf: Buffer, hint: string) {
+  const order = hint.toLowerCase().includes('png') ? (['png', 'jpg'] as const) : (['jpg', 'png'] as const)
   for (const kind of order) {
     try {
       return kind === 'png' ? await pdf.embedPng(buf) : await pdf.embedJpg(buf)
@@ -894,7 +893,7 @@ async function appendAttachments(pdf: PDFDocument, rec: ServicingRequest) {
         /* fall through to placeholder */
       }
     } else {
-      const img = await embedImageAny(pdf, buf, type, dataUrl)
+      const img = await embedImageAny(pdf, buf, `${type} ${att.path}`)
       if (img) {
         // Photo -> full A4 page, fitted with a margin, centred.
         const page = pdf.addPage([595, 842])
