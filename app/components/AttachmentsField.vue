@@ -1,13 +1,8 @@
 <script setup lang="ts">
 import { icons } from '../assets/icons'
-import {
-  processFile,
-  dataUrlBytes,
-  MAX_ATTACHMENT_BYTES,
-  MAX_TOTAL_ATTACHMENT_BYTES,
-} from '../utils/attachments'
+import { processFile, MAX_TOTAL_ATTACHMENT_BYTES } from '../utils/attachments'
 
-export type Attachment = { name: string; type: string; size: number; content: string }
+export type Attachment = { name: string; type: string; size: number; path: string }
 
 const files = defineModel<Attachment[]>({ required: true })
 
@@ -37,6 +32,7 @@ const props = withDefaults(
 
 const error = ref('')
 const dragging = ref(false)
+const uploading = ref(false)
 const ACCEPTED = [
   'application/pdf',
   'image/png',
@@ -51,30 +47,28 @@ const met = computed(() => files.value.length >= props.requiredCount)
 
 async function addFiles(list: FileList | File[]) {
   error.value = ''
-  const next = [...files.value]
-  for (const f of Array.from(list)) {
-    if (f.type && !ACCEPTED.includes(f.type)) {
-      error.value = `${f.name} is not a supported file type (PDF or image).`
-      continue
+  uploading.value = true
+  try {
+    for (const f of Array.from(list)) {
+      if (f.type && !ACCEPTED.includes(f.type)) {
+        error.value = `${f.name} is not a supported file type (PDF or image).`
+        continue
+      }
+      const currentTotal = files.value.reduce((s, a) => s + (a.size || 0), 0)
+      if (currentTotal + f.size > MAX_TOTAL_ATTACHMENT_BYTES) {
+        error.value = `Attachments would exceed 25MB in total. Please remove one or upload smaller files.`
+        continue
+      }
+      try {
+        const processed = await processFile(f)
+        files.value = [...files.value, processed]
+      } catch {
+        error.value = `Could not upload ${f.name}. Please try again.`
+      }
     }
-    // Avoid processing absurdly large originals (images are compressed below).
-    if (f.size > props.maxBytes) {
-      error.value = `${f.name} is too large. Please upload a file under 10MB.`
-      continue
-    }
-    const processed = await processFile(f)
-    if (dataUrlBytes(processed.content) > MAX_ATTACHMENT_BYTES) {
-      error.value = `${f.name} is too large to upload (max ~3MB per file). If it's a PDF, please upload a smaller file or a photo.`
-      continue
-    }
-    const total = next.reduce((s, a) => s + dataUrlBytes(a.content), 0) + dataUrlBytes(processed.content)
-    if (total > MAX_TOTAL_ATTACHMENT_BYTES) {
-      error.value = `These files are too large in total (max ~4MB). Please remove one or upload smaller files.`
-      continue
-    }
-    next.push(processed)
+  } finally {
+    uploading.value = false
   }
-  files.value = next
 }
 
 async function onInput(e: Event) {
@@ -124,6 +118,8 @@ function formatSize(bytes: number) {
       <span class="dropzone__icon" v-html="icons.upload" />
       <span class="dropzone__text"><strong>Add file</strong> or drag and drop</span>
     </label>
+
+    <p v-if="uploading" class="muted small">Uploading…</p>
 
     <ul v-if="files.length" class="files">
       <li v-for="(a, i) in files" :key="i" class="file">

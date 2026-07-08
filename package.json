@@ -12,6 +12,7 @@
     "typecheck": "nuxt typecheck"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.110.1",
     "nuxt": "^4.0.0",
     "pdf-lib": "^1.17.1",
     "resend": "^6.17.1",

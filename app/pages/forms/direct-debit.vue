@@ -1,11 +1,6 @@
 <script setup lang="ts">
 import { icons } from '../../assets/icons'
-import {
-  processFile,
-  dataUrlBytes,
-  MAX_ATTACHMENT_BYTES,
-  MAX_TOTAL_ATTACHMENT_BYTES,
-} from '../../utils/attachments'
+import { processFile, MAX_TOTAL_ATTACHMENT_BYTES } from '../../utils/attachments'
 
 useHead({ title: 'Direct Debit Request — WLTH Client Hub' })
 
@@ -58,38 +53,37 @@ function onBsb(a: LinkedAccount, e: Event) {
 }
 
 // ---- Step 3: Bank statement attachment(s) ----
-type Attachment = { name: string; type: string; size: number; content: string }
+type Attachment = { name: string; type: string; size: number; path: string }
 const attachments = ref<Attachment[]>([])
 const attachmentError = ref('')
 const dragging = ref(false)
-const MAX_FILE_BYTES = 10 * 1024 * 1024 // 10MB
+const uploading = ref(false)
 const ACCEPTED = ['application/pdf', 'image/png', 'image/jpeg', 'image/heic', 'image/webp']
 
 async function addFiles(files: FileList | File[]) {
   attachmentError.value = ''
-  const next = [...attachments.value]
-  for (const f of Array.from(files)) {
-    if (f.type && !ACCEPTED.includes(f.type)) {
-      attachmentError.value = `${f.name} is not a supported file type (PDF or image).`
-      continue
+  uploading.value = true
+  try {
+    for (const f of Array.from(files)) {
+      if (f.type && !ACCEPTED.includes(f.type)) {
+        attachmentError.value = `${f.name} is not a supported file type (PDF or image).`
+        continue
+      }
+      const currentTotal = attachments.value.reduce((s, a) => s + (a.size || 0), 0)
+      if (currentTotal + f.size > MAX_TOTAL_ATTACHMENT_BYTES) {
+        attachmentError.value = `Attachments would exceed 25MB in total. Please remove one or upload smaller files.`
+        continue
+      }
+      try {
+        const processed = await processFile(f)
+        attachments.value = [...attachments.value, processed]
+      } catch {
+        attachmentError.value = `Could not upload ${f.name}. Please try again.`
+      }
     }
-    if (f.size > MAX_FILE_BYTES) {
-      attachmentError.value = `${f.name} is too large. Please upload a file under 10MB.`
-      continue
-    }
-    const processed = await processFile(f)
-    if (dataUrlBytes(processed.content) > MAX_ATTACHMENT_BYTES) {
-      attachmentError.value = `${f.name} is too large to upload (max ~3MB per file). If it's a PDF, please upload a smaller file or a photo.`
-      continue
-    }
-    const total = next.reduce((s, a) => s + dataUrlBytes(a.content), 0) + dataUrlBytes(processed.content)
-    if (total > MAX_TOTAL_ATTACHMENT_BYTES) {
-      attachmentError.value = `These files are too large in total (max ~4MB). Please remove one or upload smaller files.`
-      continue
-    }
-    next.push(processed)
+  } finally {
+    uploading.value = false
   }
-  attachments.value = next
 }
 
 async function onFileInput(e: Event) {
@@ -480,6 +474,7 @@ By signing this request you acknowledge that you have read and understood this D
               </li>
             </ul>
 
+            <p v-if="uploading" class="muted small">Uploading…</p>
             <p v-if="attachmentError" class="file-err">{{ attachmentError }}</p>
           </div>
         </section>

@@ -1,6 +1,7 @@
 import { PDFDocument, PDFName, StandardFonts, rgb, type PDFForm } from 'pdf-lib'
 import { createError } from 'h3'
 import { HUB_OPTIONS, type RequestType, type ServicingRequest } from '~~/server/types/requests'
+import { downloadAttachment } from '~~/server/utils/supabase'
 
 /**
  * Fills the official WLTH PDF template for a submitted request, returning the
@@ -852,9 +853,8 @@ export function hasPdfTemplate(type: RequestType) {
 }
 
 /** Embed an image buffer as PNG or JPG (tries both, by hint then fallback). */
-async function embedImageAny(pdf: PDFDocument, buf: Buffer, type: string, dataUrl: string) {
-  const hint = `${type} ${dataUrl.slice(0, 30)}`.toLowerCase()
-  const order = hint.includes('png') ? (['png', 'jpg'] as const) : (['jpg', 'png'] as const)
+async function embedImageAny(pdf: PDFDocument, buf: Buffer, hint: string) {
+  const order = hint.toLowerCase().includes('png') ? (['png', 'jpg'] as const) : (['jpg', 'png'] as const)
   for (const kind of order) {
     try {
       return kind === 'png' ? await pdf.embedPng(buf) : await pdf.embedJpg(buf)
@@ -872,16 +872,16 @@ async function embedImageAny(pdf: PDFDocument, buf: Buffer, type: string, dataUr
  * so nothing is silently dropped.
  */
 async function appendAttachments(pdf: PDFDocument, rec: ServicingRequest) {
-  const atts = (rec.details as { attachments?: Array<{ name?: string; type?: string; content?: string }> })
+  const atts = (rec.details as { attachments?: Array<{ name?: string; type?: string; path?: string }> })
     ?.attachments
   if (!atts?.length) return
 
   for (const att of atts) {
-    const dataUrl = att?.content
-    if (!dataUrl || !dataUrl.includes(',')) continue
-    const buf = Buffer.from(dataUrl.split(',')[1]!, 'base64')
+    if (!att?.path) continue
+    const buf = await downloadAttachment(att.path)
+    if (!buf) continue
     const type = (att.type || '').toLowerCase()
-    const isPdf = type.includes('pdf') || dataUrl.slice(0, 40).toLowerCase().includes('application/pdf')
+    const isPdf = type.includes('pdf') || att.path.toLowerCase().endsWith('.pdf')
 
     if (isPdf) {
       try {
@@ -893,7 +893,7 @@ async function appendAttachments(pdf: PDFDocument, rec: ServicingRequest) {
         /* fall through to placeholder */
       }
     } else {
-      const img = await embedImageAny(pdf, buf, type, dataUrl)
+      const img = await embedImageAny(pdf, buf, `${type} ${att.path}`)
       if (img) {
         // Photo -> full A4 page, fitted with a margin, centred.
         const page = pdf.addPage([595, 842])
