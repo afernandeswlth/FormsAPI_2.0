@@ -498,12 +498,23 @@ const fullName = (b: any) => (b ? `${b.firstName ?? ''} ${b.lastName ?? ''}`.tri
 // ---------------------------------------------------------------------------
 // Linked Account Nomination (same template structure as Direct Debit)
 // ---------------------------------------------------------------------------
-async function fillLinkedAccount(pdf: PDFDocument, form: PDFForm, rec: ServicingRequest) {
+// Fill ONE Linked Account page for the borrower pair starting at `startIdx`
+// (borrowers startIdx and startIdx+1). Loan + linked-account details are the
+// same on every page; only the two borrower names, signatures and dates differ.
+async function fillLinkedAccountPage(
+  pdf: PDFDocument,
+  form: PDFForm,
+  rec: ServicingRequest,
+  startIdx: number,
+) {
   const d = rec.details as any
   const b: any[] = d.borrowers ?? []
   const accts: any[] = d.linkedAccounts ?? []
+  const sg: any[] = d.signatures ?? []
   const single = accts.length <= 1
   const pages = pdf.getPages()
+  const b1 = b[startIdx]
+  const b2 = b[startIdx + 1]
   const sigs: Array<{ g: NonNullable<Geom>; png: any }> = []
   const addSig = async (name: string, img?: string) => {
     const png = await embedSig(pdf, img)
@@ -513,10 +524,10 @@ async function fillLinkedAccount(pdf: PDFDocument, form: PDFForm, rec: Servicing
 
   if (single) {
     setText(form, 'Text29', rec.loanAccountNumber)
-    setText(form, 'Text30', b[0]?.lastName)
-    setText(form, 'Text31', b[0]?.firstName)
-    setText(form, 'Text32', b[1]?.lastName)
-    setText(form, 'Text33', b[1]?.firstName)
+    setText(form, 'Text30', b1?.lastName)
+    setText(form, 'Text31', b1?.firstName)
+    setText(form, 'Text32', b2?.lastName)
+    setText(form, 'Text33', b2?.firstName)
     const a = accts[0] ?? {}
     setText(form, 'Text35', a.financialInstitution)
     setText(form, 'Text36', a.branch)
@@ -524,18 +535,18 @@ async function fillLinkedAccount(pdf: PDFDocument, form: PDFForm, rec: Servicing
     setText(form, 'BSB No_5', a.bsb)
     setText(form, 'ACCOUNT No_5', a.accountNumber)
     setText(form, 'Comments', d.comments)
-    setText(form, 'Enter Text30', b[0]?.mobile)
-    setText(form, 'Enter Text29', b[1]?.mobile)
-    setText(form, 'Enter Text32', isoDate(d.signatures?.[0]?.signedAt))
-    setText(form, 'Enter Text34', isoDate(d.signatures?.[1]?.signedAt))
-    await addSig('Signature3', d.signatures?.[0]?.image)
-    await addSig('Signature4', d.signatures?.[1]?.image)
+    setText(form, 'Enter Text30', b1?.mobile)
+    setText(form, 'Enter Text29', b2?.mobile)
+    setText(form, 'Enter Text32', isoDate(sg[startIdx]?.signedAt))
+    setText(form, 'Enter Text34', isoDate(sg[startIdx + 1]?.signedAt))
+    await addSig('Signature3', sg[startIdx]?.image)
+    await addSig('Signature4', sg[startIdx + 1]?.image)
   } else {
     setText(form, 'Enter Text1', rec.loanAccountNumber)
-    setText(form, 'Enter Text2', b[0]?.lastName)
-    setText(form, 'Enter Text3', b[0]?.firstName)
-    setText(form, 'Enter Text4', b[1]?.lastName)
-    setText(form, 'Enter Text5', b[1]?.firstName)
+    setText(form, 'Enter Text2', b1?.lastName)
+    setText(form, 'Enter Text3', b1?.firstName)
+    setText(form, 'Enter Text4', b2?.lastName)
+    setText(form, 'Enter Text5', b2?.firstName)
     const fi = ['Enter Text7', 'Enter Text11', 'Enter Text15', 'Enter Text19']
     const br = ['Enter Text8', 'Enter Text12', 'Enter Text16', 'Enter Text20']
     const nm = ['Enter Text9', 'Enter Text13', 'Enter Text17', 'Enter Text21']
@@ -548,12 +559,12 @@ async function fillLinkedAccount(pdf: PDFDocument, form: PDFForm, rec: Servicing
       setText(form, bsb[i]!, a.bsb)
       setText(form, acc[i]!, a.accountNumber)
     })
-    setText(form, 'Enter Text23', b[0]?.mobile)
-    setText(form, 'Enter Text26', b[1]?.mobile)
-    setText(form, 'Enter Text25', isoDate(d.signatures?.[0]?.signedAt))
-    setText(form, 'Enter Text28', isoDate(d.signatures?.[1]?.signedAt))
-    await addSig('Signature1', d.signatures?.[0]?.image)
-    await addSig('Signature2', d.signatures?.[1]?.image)
+    setText(form, 'Enter Text23', b1?.mobile)
+    setText(form, 'Enter Text26', b2?.mobile)
+    setText(form, 'Enter Text25', isoDate(sg[startIdx]?.signedAt))
+    setText(form, 'Enter Text28', isoDate(sg[startIdx + 1]?.signedAt))
+    await addSig('Signature1', sg[startIdx]?.image)
+    await addSig('Signature2', sg[startIdx + 1]?.image)
   }
 
   try {
@@ -564,6 +575,26 @@ async function fillLinkedAccount(pdf: PDFDocument, form: PDFForm, rec: Servicing
   for (const { g, png } of sigs) drawSigImage(g.page, png, g.r)
   if (single) pdf.removePage(1)
   else pdf.removePage(0)
+}
+
+// The Linked Account template has only two signature slots. For 3–4 borrowers,
+// duplicate the page — same loan/account details — with borrowers 3 & 4 on it.
+async function fillLinkedAccount(
+  pdf: PDFDocument,
+  form: PDFForm,
+  rec: ServicingRequest,
+  raw?: Uint8Array,
+) {
+  const b: any[] = (rec.details as any).borrowers ?? []
+  await fillLinkedAccountPage(pdf, form, rec, 0)
+  if (b.length > 2 && raw) {
+    const pdf2 = await PDFDocument.load(raw, { ignoreEncryption: true })
+    await fillLinkedAccountPage(pdf2, pdf2.getForm(), rec, 2)
+    const [page2] = await pdf.copyPages(pdf2, [0])
+    // Insert right after the first form page so both signature pages sit
+    // together, ahead of the Client Service Agreement terms page.
+    pdf.insertPage(1, page2)
+  }
 }
 
 // ---------------------------------------------------------------------------
