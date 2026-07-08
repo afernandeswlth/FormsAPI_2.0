@@ -81,11 +81,11 @@ const directDebit = baseSchema
   .extend({
     borrowers: z.array(borrowerSchema).min(1).max(4),
     comments: z.string().max(1000).optional(),
-    linkedAccounts: z.array(linkedAccountSchema).min(1).max(4),
-    attachments: z
-      .array(attachmentSchema)
-      .min(1, 'A bank statement attachment is required')
-      .max(10),
+    // Where repayments are drawn from: an external bank account, or a WLTH offset account.
+    debitSource: z.enum(['external', 'offset']),
+    offsetAccountNumber: z.string().optional(),
+    linkedAccounts: z.array(linkedAccountSchema).max(4).default([]),
+    attachments: z.array(attachmentSchema).max(10).default([]),
     repayment: z
       .object({
         frequency,
@@ -116,8 +116,17 @@ const directDebit = baseSchema
     message: 'Every borrower must sign',
     path: ['signatures'],
   })
-  // One bank statement is required per linked account.
-  .refine((d) => d.attachments.length >= d.linkedAccounts.length, {
+  // Offset: a valid offset account number is required.
+  .refine(
+    (d) => d.debitSource !== 'offset' || /^\d{5,10}$/.test((d.offsetAccountNumber ?? '').replace(/\D/g, '')),
+    { message: 'A valid offset account number is required', path: ['offsetAccountNumber'] },
+  )
+  // External: at least one linked account, with a bank statement for each.
+  .refine((d) => d.debitSource !== 'external' || d.linkedAccounts.length >= 1, {
+    message: 'At least one linked account is required',
+    path: ['linkedAccounts'],
+  })
+  .refine((d) => d.debitSource !== 'external' || d.attachments.length >= d.linkedAccounts.length, {
     message: 'A bank statement is required for each linked account',
     path: ['attachments'],
   })

@@ -111,6 +111,25 @@ function drawSigImage(
 // ---------------------------------------------------------------------------
 const FREQ_INDEX: Record<string, number> = { weekly: 0, fortnightly: 1, monthly: 2 }
 
+// A WLTH offset account rendered as a linked account: WLTH offset account
+// numbers starting 200/400 use BSB 636-380 and "WLTH" as the institution.
+function offsetAsAccount(num: unknown) {
+  const n = String(num ?? '').replace(/\D/g, '')
+  const isWlth = n.startsWith('200') || n.startsWith('400')
+  return {
+    financialInstitution: 'WLTH',
+    branch: '',
+    accountName: '',
+    bsb: isWlth ? '636380' : '', // segmented BSB field renders digits without the dash
+    accountNumber: n,
+  }
+}
+
+// The accounts to render: the single derived offset account, or the entered ones.
+function ddAccounts(d: any): any[] {
+  return d.debitSource === 'offset' ? [offsetAsAccount(d.offsetAccountNumber)] : (d.linkedAccounts ?? [])
+}
+
 // Fill ONE Direct Debit account page (single- or multi-account layout) for the
 // borrower pair starting at `startIdx`, then keep [account page, terms]. Shared
 // loan/account/frequency/amount data repeats on every page; only the borrower
@@ -127,7 +146,7 @@ async function fillDirectDebitPage(
   const b2 = borrowers[startIdx + 1]
   const sig1 = d.signatures?.[startIdx]
   const sig2 = d.signatures?.[startIdx + 1]
-  const accounts: any[] = d.linkedAccounts ?? []
+  const accounts: any[] = ddAccounts(d)
   const freqIdx = FREQ_INDEX[d.repayment?.frequency]
   const isOther = d.repayment?.amountType === 'other'
   const amountText = isOther ? money(d.repayment?.amount) : 'Minimum Required'
@@ -285,7 +304,7 @@ async function fillDirectDebit(
 ) {
   const d = rec.details as any
   const b: any[] = d.borrowers ?? []
-  const single = (d.linkedAccounts ?? []).length <= 1
+  const single = ddAccounts(d).length <= 1
   const accIdx = single ? 0 : 1
 
   await fillDirectDebitPage(pdf, form, rec, 0)

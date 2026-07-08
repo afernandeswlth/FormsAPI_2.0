@@ -39,13 +39,21 @@ watch(borrowerCount, (n) => {
 // ---- Step 2: Loan ----
 const loan = ref({ accountNumber: '', comments: '' })
 
-// ---- Step 3: Linked accounts ----
-const accountCount = ref(1)
+// ---- Step 3: Debit source — external bank accounts or a WLTH offset account ----
+const debitSource = ref<'' | 'external' | 'offset'>('')
+const offsetAccountNumber = ref('')
 const linkedAccounts = ref<LinkedAccount[]>([blankAccount()])
 function blankAccount(): LinkedAccount {
   return { financialInstitution: '', branch: '', accountName: '', bsb: '', accountNumber: '' }
 }
-watch(accountCount, (n) => resize(linkedAccounts, n, blankAccount))
+function addAccount() {
+  if (linkedAccounts.value.length < 4)
+    linkedAccounts.value = [...linkedAccounts.value, blankAccount()]
+}
+function removeAccount(i: number) {
+  if (linkedAccounts.value.length > 1)
+    linkedAccounts.value = linkedAccounts.value.filter((_, idx) => idx !== i)
+}
 
 // Auto-format BSB as XXX-XXX: the client types digits only, the dash fills in.
 function onBsb(a: LinkedAccount, e: Event) {
@@ -141,17 +149,24 @@ function validateStep(i: number): string[] {
   } else if (i === 1) {
     if (!loan.value.accountNumber.trim()) e.push('Loan account number is required')
   } else if (i === 2) {
-    linkedAccounts.value.forEach((a, idx) => {
-      if (!a.financialInstitution || !a.accountName)
-        e.push(`Linked Account ${idx + 1}: financial institution and account name are required`)
-      if (!/^\d{3}-?\d{3}$/.test(a.bsb)) e.push(`Linked Account ${idx + 1}: BSB must be 6 digits`)
-      if (!/^\d{5,10}$/.test(a.accountNumber)) e.push(`Linked Account ${idx + 1}: account number 5–10 digits`)
-    })
-    const need = linkedAccounts.value.length
-    if (attachments.value.length < need)
-      e.push(
-        `Attach at least ${need} bank statement${need > 1 ? 's' : ''} (one per linked account)`,
-      )
+    if (!debitSource.value) {
+      e.push('Select where your direct debits should come from')
+    } else if (debitSource.value === 'offset') {
+      if (!/^\d{5,10}$/.test(offsetAccountNumber.value.replace(/\D/g, '')))
+        e.push('Enter a valid offset account number (5–10 digits)')
+    } else {
+      linkedAccounts.value.forEach((a, idx) => {
+        if (!a.financialInstitution || !a.accountName)
+          e.push(`Linked Account ${idx + 1}: financial institution and account name are required`)
+        if (!/^\d{3}-?\d{3}$/.test(a.bsb)) e.push(`Linked Account ${idx + 1}: BSB must be 6 digits`)
+        if (!/^\d{5,10}$/.test(a.accountNumber)) e.push(`Linked Account ${idx + 1}: account number 5–10 digits`)
+      })
+      const need = linkedAccounts.value.length
+      if (attachments.value.length < need)
+        e.push(
+          `Attach at least ${need} bank statement${need > 1 ? 's' : ''} (one per linked account)`,
+        )
+    }
   } else if (i === 3) {
     if (!repayment.value.frequency) e.push('Select a payment frequency')
     if (!repayment.value.amountType) e.push('Select a repayment amount option')
@@ -217,8 +232,11 @@ async function submit() {
     loanAccountNumber: loan.value.accountNumber,
     borrowers: borrowers.value,
     comments: loan.value.comments || undefined,
-    linkedAccounts: linkedAccounts.value,
-    attachments: attachments.value,
+    debitSource: debitSource.value,
+    offsetAccountNumber:
+      debitSource.value === 'offset' ? offsetAccountNumber.value.replace(/\D/g, '') : undefined,
+    linkedAccounts: debitSource.value === 'external' ? linkedAccounts.value : [],
+    attachments: debitSource.value === 'external' ? attachments.value : [],
     repayment: {
       frequency: repayment.value.frequency,
       amountType: repayment.value.amountType,
@@ -385,22 +403,58 @@ By signing this request you acknowledge that you have read and understood this D
 
         <!-- STEP 3: LINKED ACCOUNTS -->
         <section v-if="step === 2" class="card">
-          <h2>How many accounts would you like linked?</h2>
+          <h2>Where would you like your direct debits to come from?</h2>
           <div class="tiles">
             <button
-              v-for="n in 4"
-              :key="n"
               type="button"
               class="tile tile--wide"
-              :class="{ 'is-selected': accountCount === n }"
-              @click="accountCount = n"
+              :class="{ 'is-selected': debitSource === 'external' }"
+              @click="debitSource = 'external'"
             >
-              {{ n }} {{ n === 1 ? 'Account' : 'Accounts' }}
+              External account
+            </button>
+            <button
+              type="button"
+              class="tile tile--wide"
+              :class="{ 'is-selected': debitSource === 'offset' }"
+              @click="debitSource = 'offset'"
+            >
+              WLTH Offset account
             </button>
           </div>
 
+          <!-- OFFSET: only the offset account number, no bank statement -->
+          <div v-if="debitSource === 'offset'" class="acct">
+            <h3>Offset Account</h3>
+            <label class="field field--full">
+              <span>Offset Account Number</span>
+              <input
+                v-model="offsetAccountNumber"
+                type="text"
+                inputmode="numeric"
+                placeholder="e.g. 400001234"
+              />
+            </label>
+            <p class="muted small">
+              Your repayments will be direct debited from this WLTH offset account. No bank
+              statement is required.
+            </p>
+          </div>
+
+          <!-- EXTERNAL: one or more linked accounts, each with a bank statement -->
+          <template v-else-if="debitSource === 'external'">
           <div v-for="(a, i) in linkedAccounts" :key="i" class="acct">
-            <h3>Linked Account {{ i + 1 }}</h3>
+            <div class="acct__head">
+              <h3>Linked Account {{ i + 1 }}</h3>
+              <button
+                v-if="linkedAccounts.length > 1"
+                type="button"
+                class="acct__remove"
+                @click="removeAccount(i)"
+              >
+                Remove
+              </button>
+            </div>
             <div class="grid2">
               <label class="field">
                 <span>Financial Institution</span>
@@ -431,6 +485,15 @@ By signing this request you acknowledge that you have read and understood this D
               </label>
             </div>
           </div>
+
+          <button
+            type="button"
+            class="add-account"
+            :disabled="linkedAccounts.length >= 4"
+            @click="addAccount"
+          >
+            + Link another account
+          </button>
 
           <div class="uploads">
             <h3>
@@ -485,6 +548,7 @@ By signing this request you acknowledge that you have read and understood this D
             <p v-if="uploading" class="muted small">Uploading…</p>
             <p v-if="attachmentError" class="file-err">{{ attachmentError }}</p>
           </div>
+          </template>
         </section>
 
         <!-- STEP 4: REPAYMENTS -->
@@ -554,17 +618,24 @@ By signing this request you acknowledge that you have read and understood this D
 
           <div class="card review">
             <div class="review__head">
-              <h3>Linked Accounts</h3>
+              <h3>{{ debitSource === 'offset' ? 'Offset Account' : 'Linked Accounts' }}</h3>
               <button type="button" class="edit" @click="goTo(2)">Edit</button>
             </div>
-            <div v-for="(a, i) in linkedAccounts" :key="i" class="review__row">
-              <strong>Account {{ i + 1 }}</strong>
-              <span>{{ a.accountName }} — {{ a.financialInstitution }} · BSB {{ a.bsb }} · {{ a.accountNumber }}</span>
-            </div>
-            <div class="review__row">
-              <strong>Bank statement</strong>
-              <span>{{ attachments.map((a) => a.name).join(', ') || '—' }}</span>
-            </div>
+            <template v-if="debitSource === 'offset'">
+              <div class="review__row">
+                <strong>Offset account</strong><span>{{ offsetAccountNumber }}</span>
+              </div>
+            </template>
+            <template v-else>
+              <div v-for="(a, i) in linkedAccounts" :key="i" class="review__row">
+                <strong>Account {{ i + 1 }}</strong>
+                <span>{{ a.accountName }} — {{ a.financialInstitution }} · BSB {{ a.bsb }} · {{ a.accountNumber }}</span>
+              </div>
+              <div class="review__row">
+                <strong>Bank statement</strong>
+                <span>{{ attachments.map((a) => a.name).join(', ') || '—' }}</span>
+              </div>
+            </template>
           </div>
 
           <div class="card review">
@@ -837,6 +908,44 @@ By signing this request you acknowledge that you have read and understood this D
   border-left: 5px solid var(--aqua);
   padding: 20px 0 4px 22px;
   margin-top: 24px;
+}
+.acct__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.acct__remove {
+  background: none;
+  border: none;
+  color: var(--error, #ef4444);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 6px 0;
+}
+.acct__remove:hover {
+  text-decoration: underline;
+}
+.add-account {
+  margin-top: 20px;
+  background: var(--primary-tint);
+  color: var(--blue);
+  border: 1.5px dashed var(--blue);
+  border-radius: var(--radius-pill);
+  font: inherit;
+  font-weight: 600;
+  padding: 12px 24px;
+  min-height: 48px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.add-account:hover:not(:disabled) {
+  background: var(--rb-100, #d9e2ff);
+}
+.add-account:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 .grid2 {
   display: grid;
