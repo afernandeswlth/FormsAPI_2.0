@@ -16,10 +16,19 @@ import { downloadAttachment } from '~~/server/utils/supabase'
 const FALLBACK_PNG =
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNgYGAAAAAEAAH2FzhVAAAAAElFTkSuQmCC'
 
+/**
+ * Strip characters the PDF standard fonts can't encode (anything outside ASCII,
+ * e.g. Japanese) so PDF generation never throws. The client blocks such input
+ * with a clear message; this is a server-side safety net for API-direct calls.
+ */
+function ascii(value: unknown): string {
+  return value == null ? '' : String(value).replace(/[^\x00-\x7F]/g, '')
+}
+
 function setText(form: PDFForm, name: string, value: unknown) {
   try {
     const f = form.getTextField(name)
-    f.setText(value == null ? '' : String(value))
+    f.setText(ascii(value))
     f.setFontSize(9)
   } catch {
     /* field absent on this template — ignore */
@@ -493,7 +502,7 @@ async function generateSummaryPdf(rec: ServicingRequest): Promise<Uint8Array> {
   return pdf.save()
 }
 
-const fullName = (b: any) => (b ? `${b.firstName ?? ''} ${b.lastName ?? ''}`.trim() : '')
+const fullName = (b: any) => (b ? ascii(`${b.firstName ?? ''} ${b.lastName ?? ''}`.trim()) : '')
 
 // ---------------------------------------------------------------------------
 // Linked Account Nomination (same template structure as Direct Debit)
@@ -940,7 +949,7 @@ async function appendAttachments(pdf: PDFDocument, rec: ServicingRequest) {
     // Unreadable or unsupported (e.g. HEIC/WebP) — leave a marker, don't drop it.
     const page = pdf.addPage([595, 842])
     const font = await pdf.embedFont(StandardFonts.Helvetica)
-    page.drawText(`Attachment: ${att.name || 'file'}`, { x: 40, y: 790, size: 12, font })
+    page.drawText(ascii(`Attachment: ${att.name || 'file'}`), { x: 40, y: 790, size: 12, font })
     page.drawText(`(This file type could not be embedded: ${att.type || 'unknown'})`, {
       x: 40,
       y: 772,

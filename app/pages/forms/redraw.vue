@@ -3,6 +3,7 @@ import type { Borrower } from '../../components/BorrowersStep.vue'
 import type { DestinationAccount } from '../../components/DestinationAccountStep.vue'
 import type { RedrawPurpose } from '../../components/RedrawPurposeStep.vue'
 import type { Attachment } from '../../components/AttachmentsField.vue'
+import { englishError } from '../../utils/english'
 
 useHead({ title: 'Redraw Request — WLTH Client Hub' })
 
@@ -110,6 +111,14 @@ function validateStep(i: number): string[] {
       if (!s) e.push(`Borrower ${idx + 1} must sign`)
     })
   }
+  e.push(
+    ...englishError({
+      borrowers: borrowers.value,
+      loan: loan.value,
+      destination: destination.value,
+      reason: reason.value,
+    }),
+  )
   return e
 }
 

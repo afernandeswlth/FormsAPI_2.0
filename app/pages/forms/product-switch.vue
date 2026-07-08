@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Borrower } from '../../components/BorrowersStep.vue'
 import type { ProductType } from '../../components/NewProductStep.vue'
+import { englishError } from '../../utils/english'
 
 useHead({ title: 'Product Switch Request — WLTH Client Hub' })
 
@@ -69,6 +70,9 @@ function validateStep(i: number): string[] {
       if (!s) e.push(`Borrower ${idx + 1} must sign`)
     })
   }
+  e.push(
+    ...englishError({ borrowers: borrowers.value, loan: loan.value, term: term.value, reason: reason.value }),
+  )
   return e
 }
 

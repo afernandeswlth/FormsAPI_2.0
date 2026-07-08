@@ -3,6 +3,7 @@ import type { Borrower } from '../../components/BorrowersStep.vue'
 import type { LinkedAccount } from '../../components/LinkedAccountsStep.vue'
 import type { Attachment } from '../../components/AttachmentsField.vue'
 import { directDebitTerms } from '../../assets/terms'
+import { englishError } from '../../utils/english'
 
 useHead({ title: 'Linked Account Nomination — WLTH Client Hub' })
 
@@ -88,6 +89,13 @@ function validateStep(i: number): string[] {
       if (!s) e.push(`Borrower ${idx + 1} must sign`)
     })
   }
+  e.push(
+    ...englishError({
+      borrowers: borrowers.value,
+      loan: loan.value,
+      linkedAccounts: linkedAccounts.value,
+    }),
+  )
   return e
 }
 

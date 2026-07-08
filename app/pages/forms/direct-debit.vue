@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { icons } from '../../assets/icons'
 import { processFile, MAX_TOTAL_ATTACHMENT_BYTES } from '../../utils/attachments'
+import { englishError } from '../../utils/english'
 
 useHead({ title: 'Direct Debit Request — WLTH Client Hub' })
 
@@ -162,6 +163,13 @@ function validateStep(i: number): string[] {
       if (!s) e.push(`Borrower ${idx + 1} must sign`)
     })
   }
+  e.push(
+    ...englishError({
+      borrowers: borrowers.value,
+      loan: loan.value,
+      linkedAccounts: linkedAccounts.value,
+    }),
+  )
   return e
 }
 
