@@ -40,8 +40,11 @@ const signatures = ref<string[]>([''])
 
 // If an SMSF trust name is provided, repayments can't come from the loan account.
 const smsfProvided = computed(() => !!loan.value.smsfTrustName?.trim())
-const attachmentHint =
-  'Optionally attach a bank statement for any linked account. PDF or image, up to 10MB each.'
+const requiredStatements = computed(() => linkedAccounts.value.length)
+const attachmentHint = computed(
+  () =>
+    `A bank statement is required for each linked account (${requiredStatements.value} required). PDF or image, up to 10MB each.`,
+)
 
 // Force any "loan account" selections to offset once an SMSF trust name is set.
 watch(smsfProvided, (on) => {
@@ -75,6 +78,10 @@ function validateStep(i: number): string[] {
         e.push(`Linked Account ${idx + 1}: a valid offset account number (5–10 digits) is required`)
       if (!a.accountName.trim()) e.push(`Linked Account ${idx + 1}: account name is required`)
     })
+    if (attachments.value.length < requiredStatements.value)
+      e.push(
+        `Attach a bank statement for each linked account (${requiredStatements.value} required)`,
+      )
   } else if (i === 4) {
     if (!agreed.value) e.push('You must accept the Direct Debit Terms and Conditions')
     signatures.value.forEach((s, idx) => {
@@ -235,8 +242,8 @@ function downloadCopy() {
         >
           <AttachmentsField
             v-model="attachments"
-            title="Bank Statements (optional)"
-            :required-count="0"
+            title="Bank Statements"
+            :required-count="requiredStatements"
             :hint="attachmentHint"
           />
         </LinkedAccountsStep>

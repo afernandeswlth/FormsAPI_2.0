@@ -174,6 +174,11 @@ const linkedAccount = baseSchema
     message: 'Every borrower must sign',
     path: ['signatures'],
   })
+  // A bank statement is required for each linked account (loan or offset).
+  .refine((d) => d.attachments.length >= d.linkedAccounts.length, {
+    message: 'A bank statement is required for each linked account',
+    path: ['attachments'],
+  })
   // Offset selections need a valid offset account number.
   .refine(
     (d) =>
