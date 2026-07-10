@@ -55,6 +55,9 @@ const borrowerSchema = z.object({
 
 const linkedAccountSchema = z.object({
   accountType: z.enum(['external', 'wlth']).default('external'),
+  // Linked Account form: which WLTH account repayments link to, and (for offset) its number.
+  linkTo: z.enum(['loan', 'offset']).optional(),
+  offsetAccountNumber: z.string().optional(),
   financialInstitution: z.string().min(1, 'Financial institution is required'),
   branch: z.string().optional(),
   accountName: z.string().min(1, 'Account name is required'),
@@ -136,6 +139,7 @@ const linkedAccount = baseSchema
   .extend({
     borrowers: z.array(borrowerSchema).min(1).max(4),
     comments: z.string().max(1000).optional(),
+    smsfTrustName: z.string().max(200).optional(),
     linkedAccounts: z.array(linkedAccountSchema).min(1).max(4),
     attachments: z.array(attachmentSchema).max(10).default([]),
     declaration: z.object({
@@ -157,15 +161,18 @@ const linkedAccount = baseSchema
     message: 'Every borrower must sign',
     path: ['signatures'],
   })
-  // A bank statement is required for each external account (WLTH accounts exempt).
+  // A bank statement is required for each linked account.
+  .refine((d) => d.attachments.length >= d.linkedAccounts.length, {
+    message: 'A bank statement is required for each linked account',
+    path: ['attachments'],
+  })
+  // Offset selections need a valid offset account number.
   .refine(
     (d) =>
-      d.attachments.length >=
-      d.linkedAccounts.filter((a) => a.accountType === 'external').length,
-    {
-      message: 'A bank statement is required for each external account',
-      path: ['attachments'],
-    },
+      d.linkedAccounts.every(
+        (a) => a.linkTo !== 'offset' || /^\d{5,10}$/.test((a.offsetAccountNumber ?? '').replace(/\D/g, '')),
+      ),
+    { message: 'A valid offset account number is required for each offset account', path: ['linkedAccounts'] },
   )
 
 // ---- Repayment Change Request (multi-step form) ----

@@ -22,11 +22,11 @@ const borrowerCount = ref(1)
 const borrowers = ref<Borrower[]>([
   { firstName: '', lastName: '', mobile: '', email: '' },
 ])
-const loan = ref({ accountNumber: '', comments: '' })
-const accountCount = ref(1)
+const loan = ref({ accountNumber: '', comments: '', smsfTrustName: '' })
 const linkedAccounts = ref<LinkedAccount[]>([
   {
-    accountType: 'external',
+    linkTo: 'loan',
+    offsetAccountNumber: '',
     financialInstitution: '',
     branch: '',
     accountName: '',
@@ -38,19 +38,17 @@ const attachments = ref<Attachment[]>([])
 const agreed = ref(false)
 const signatures = ref<string[]>([''])
 
-// A bank statement is mandatory for each external account, optional for WLTH
-// loan/offset accounts.
-const externalCount = computed(
-  () => linkedAccounts.value.filter((a) => a.accountType === 'external').length,
-)
+// If an SMSF trust name is provided, repayments can't come from the loan account.
+const smsfProvided = computed(() => !!loan.value.smsfTrustName?.trim())
+const requiredStatements = computed(() => linkedAccounts.value.length)
 const attachmentHint = computed(
   () =>
-    `A bank statement is required for each external account (${externalCount.value} required). WLTH loan/offset accounts do not require one. PDF or image, up to 10MB each.`,
+    `A bank statement is required for each linked account (${requiredStatements.value} required). PDF or image, up to 10MB each.`,
 )
 
-// If there are no external accounts, no statement is required — drop any files.
-watch(externalCount, (n) => {
-  if (n === 0 && attachments.value.length) attachments.value = []
+// Force any "loan account" selections to offset once an SMSF trust name is set.
+watch(smsfProvided, (on) => {
+  if (on) linkedAccounts.value.forEach((a) => (a.linkTo = a.linkTo === 'loan' ? 'offset' : a.linkTo))
 })
 
 // Keep one signature slot per borrower.
@@ -74,14 +72,18 @@ function validateStep(i: number): string[] {
     if (!loan.value.accountNumber.trim()) e.push('Loan account number is required')
   } else if (i === 2) {
     linkedAccounts.value.forEach((a, idx) => {
+      if (smsfProvided.value && a.linkTo === 'loan')
+        e.push(`Linked Account ${idx + 1}: choose Offset account (an SMSF trust name was provided)`)
+      if (a.linkTo === 'offset' && !/^\d{5,10}$/.test(a.offsetAccountNumber))
+        e.push(`Linked Account ${idx + 1}: a valid offset account number (5–10 digits) is required`)
       if (!a.financialInstitution || !a.accountName)
         e.push(`Linked Account ${idx + 1}: financial institution and account name are required`)
       if (!/^\d{3}-?\d{3}$/.test(a.bsb)) e.push(`Linked Account ${idx + 1}: BSB must be 6 digits`)
       if (!/^\d{5,10}$/.test(a.accountNumber)) e.push(`Linked Account ${idx + 1}: account number 5–10 digits`)
     })
-    if (attachments.value.length < externalCount.value)
+    if (attachments.value.length < requiredStatements.value)
       e.push(
-        `Attach a bank statement for each external account (${externalCount.value} required)`,
+        `Attach a bank statement for each linked account (${requiredStatements.value} required)`,
       )
   } else if (i === 4) {
     if (!agreed.value) e.push('You must accept the Direct Debit Terms and Conditions')
@@ -143,6 +145,7 @@ async function submit() {
     loanAccountNumber: loan.value.accountNumber,
     borrowers: borrowers.value,
     comments: loan.value.comments || undefined,
+    smsfTrustName: loan.value.smsfTrustName || undefined,
     linkedAccounts: linkedAccounts.value,
     attachments: attachments.value,
     declaration: { agreed: agreed.value },
@@ -233,18 +236,17 @@ function downloadCopy() {
           tile-noun="Borrower"
         />
 
-        <LoanStep v-if="step === 1" v-model:loan="loan" title="Loan Information" />
+        <LoanStep v-if="step === 1" v-model:loan="loan" title="Loan Information" show-smsf />
 
         <LinkedAccountsStep
           v-if="step === 2"
-          v-model:count="accountCount"
           v-model:accounts="linkedAccounts"
+          :smsf-provided="smsfProvided"
         >
           <AttachmentsField
-            v-if="externalCount > 0"
             v-model="attachments"
             title="Bank Statements"
-            :required-count="externalCount"
+            :required-count="requiredStatements"
             :hint="attachmentHint"
           />
         </LinkedAccountsStep>
@@ -262,6 +264,9 @@ function downloadCopy() {
             <div class="review__row">
               <strong>Loan Account</strong><span>{{ loan.accountNumber }}</span>
             </div>
+            <div v-if="loan.smsfTrustName" class="review__row">
+              <strong>SMSF Trust Name</strong><span>{{ loan.smsfTrustName }}</span>
+            </div>
             <div v-if="loan.comments" class="review__row">
               <strong>Comments</strong><span>{{ loan.comments }}</span>
             </div>
@@ -271,7 +276,7 @@ function downloadCopy() {
             <div v-for="(a, i) in linkedAccounts" :key="i" class="review__row">
               <strong>Account {{ i + 1 }}</strong>
               <span>
-                {{ a.accountType === 'wlth' ? 'WLTH' : 'External' }} ·
+                Link to {{ a.linkTo === 'offset' ? `Offset ${a.offsetAccountNumber}` : 'Loan Account' }} ·
                 {{ a.accountName }} — {{ a.financialInstitution }} · BSB {{ a.bsb }} · {{ a.accountNumber }}
               </span>
             </div>

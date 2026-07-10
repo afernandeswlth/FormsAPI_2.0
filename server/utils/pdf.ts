@@ -540,6 +540,13 @@ async function fillLinkedAccountPage(
   const accts: any[] = d.linkedAccounts ?? []
   const sg: any[] = d.signatures ?? []
   const single = accts.length <= 1
+  // Top "Account No(s)" = whatever the client picked to link to: their offset
+  // account number, or the loan account number.
+  const primaryAcct = accts[0] ?? {}
+  const topAccountNo =
+    primaryAcct.linkTo === 'offset'
+      ? String(primaryAcct.offsetAccountNumber ?? '').replace(/\D/g, '')
+      : rec.loanAccountNumber
   const pages = pdf.getPages()
   const b1 = b[startIdx]
   const b2 = b[startIdx + 1]
@@ -551,7 +558,7 @@ async function fillLinkedAccountPage(
   }
 
   if (single) {
-    setText(form, 'Text29', rec.loanAccountNumber)
+    setText(form, 'Text29', topAccountNo)
     setText(form, 'Text30', b1?.lastName)
     setText(form, 'Text31', b1?.firstName)
     setText(form, 'Text32', b2?.lastName)
@@ -570,7 +577,7 @@ async function fillLinkedAccountPage(
     await addSig('Signature3', sg[startIdx]?.image)
     await addSig('Signature4', sg[startIdx + 1]?.image)
   } else {
-    setText(form, 'Enter Text1', rec.loanAccountNumber)
+    setText(form, 'Enter Text1', topAccountNo)
     setText(form, 'Enter Text2', b1?.lastName)
     setText(form, 'Enter Text3', b1?.firstName)
     setText(form, 'Enter Text4', b2?.lastName)
