@@ -31,6 +31,15 @@ function blank(): LinkedAccount {
   }
 }
 
+// Offset accounts don't use external bank details — clear them on selection.
+function selectOffset(a: LinkedAccount) {
+  a.linkTo = 'offset'
+  a.financialInstitution = ''
+  a.branch = ''
+  a.bsb = ''
+  a.accountNumber = ''
+}
+
 function addAccount() {
   if (accounts.value.length < 4) accounts.value = [...accounts.value, blank()]
 }
@@ -83,7 +92,7 @@ function onOffsetNumber(a: LinkedAccount, e: Event) {
           type="button"
           class="linkto__opt"
           :class="{ 'is-selected': a.linkTo === 'offset' }"
-          @click="a.linkTo = 'offset'"
+          @click="selectOffset(a)"
         >
           Offset account
         </button>
@@ -104,7 +113,13 @@ function onOffsetNumber(a: LinkedAccount, e: Event) {
         />
       </label>
 
-      <div class="grid2">
+      <label class="field field--full acct-name">
+        <span>Account Name <span class="req">*</span></span>
+        <input v-model="a.accountName" type="text" />
+      </label>
+
+      <!-- External bank details only apply when linking to a loan account -->
+      <div v-if="a.linkTo !== 'offset'" class="grid2">
         <label class="field">
           <span>Financial Institution <em>(optional)</em></span>
           <input v-model="a.financialInstitution" type="text" />
@@ -112,10 +127,6 @@ function onOffsetNumber(a: LinkedAccount, e: Event) {
         <label class="field">
           <span>Branch <em>(optional)</em></span>
           <input v-model="a.branch" type="text" />
-        </label>
-        <label class="field field--full">
-          <span>Account Name <span class="req">*</span></span>
-          <input v-model="a.accountName" type="text" />
         </label>
         <label class="field">
           <span>BSB <em>(optional)</em></span>
@@ -212,7 +223,8 @@ function onOffsetNumber(a: LinkedAccount, e: Event) {
 .linkto__note {
   margin: 0 0 14px;
 }
-.offset-field {
+.offset-field,
+.acct-name {
   margin-bottom: 18px;
 }
 .add-account {
