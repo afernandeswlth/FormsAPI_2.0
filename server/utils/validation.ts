@@ -55,14 +55,27 @@ const borrowerSchema = z.object({
 
 const linkedAccountSchema = z.object({
   accountType: z.enum(['external', 'wlth']).default('external'),
-  // Linked Account form: which WLTH account repayments link to, and (for offset) its number.
-  linkTo: z.enum(['loan', 'offset']).optional(),
-  offsetAccountNumber: z.string().optional(),
   financialInstitution: z.string().min(1, 'Financial institution is required'),
   branch: z.string().optional(),
   accountName: z.string().min(1, 'Account name is required'),
   bsb,
   accountNumber,
+})
+
+// Linked Account Nomination: which WLTH account repayments link to (and, for
+// offset, its number). Institution/branch/BSB/account number are optional; a
+// bank statement is not required.
+const nominatedAccountSchema = z.object({
+  linkTo: z.enum(['loan', 'offset']).optional(),
+  offsetAccountNumber: z.string().optional(),
+  financialInstitution: z.string().optional(),
+  branch: z.string().optional(),
+  accountName: z.string().min(1, 'Account name is required'),
+  bsb: z
+    .string()
+    .optional()
+    .transform((v) => (v ?? '').replace(/-/g, '')),
+  accountNumber: z.string().optional(),
 })
 
 const attachmentSchema = z.object({
@@ -140,7 +153,7 @@ const linkedAccount = baseSchema
     borrowers: z.array(borrowerSchema).min(1).max(4),
     comments: z.string().max(1000).optional(),
     smsfTrustName: z.string().max(200).optional(),
-    linkedAccounts: z.array(linkedAccountSchema).min(1).max(4),
+    linkedAccounts: z.array(nominatedAccountSchema).min(1).max(4),
     attachments: z.array(attachmentSchema).max(10).default([]),
     declaration: z.object({
       agreed: z.literal(true, {
@@ -160,11 +173,6 @@ const linkedAccount = baseSchema
   .refine((d) => d.signatures.length === d.borrowers.length, {
     message: 'Every borrower must sign',
     path: ['signatures'],
-  })
-  // A bank statement is required for each linked account.
-  .refine((d) => d.attachments.length >= d.linkedAccounts.length, {
-    message: 'A bank statement is required for each linked account',
-    path: ['attachments'],
   })
   // Offset selections need a valid offset account number.
   .refine(

@@ -40,11 +40,8 @@ const signatures = ref<string[]>([''])
 
 // If an SMSF trust name is provided, repayments can't come from the loan account.
 const smsfProvided = computed(() => !!loan.value.smsfTrustName?.trim())
-const requiredStatements = computed(() => linkedAccounts.value.length)
-const attachmentHint = computed(
-  () =>
-    `A bank statement is required for each linked account (${requiredStatements.value} required). PDF or image, up to 10MB each.`,
-)
+const attachmentHint =
+  'Optionally attach a bank statement for any linked account. PDF or image, up to 10MB each.'
 
 // Force any "loan account" selections to offset once an SMSF trust name is set.
 watch(smsfProvided, (on) => {
@@ -74,17 +71,10 @@ function validateStep(i: number): string[] {
     linkedAccounts.value.forEach((a, idx) => {
       if (smsfProvided.value && a.linkTo === 'loan')
         e.push(`Linked Account ${idx + 1}: choose Offset account (an SMSF trust name was provided)`)
-      if (a.linkTo === 'offset' && !/^\d{5,10}$/.test(a.offsetAccountNumber))
+      if (a.linkTo === 'offset' && !/^\d{5,10}$/.test(a.offsetAccountNumber.replace(/\D/g, '')))
         e.push(`Linked Account ${idx + 1}: a valid offset account number (5–10 digits) is required`)
-      if (!a.financialInstitution || !a.accountName)
-        e.push(`Linked Account ${idx + 1}: financial institution and account name are required`)
-      if (!/^\d{3}-?\d{3}$/.test(a.bsb)) e.push(`Linked Account ${idx + 1}: BSB must be 6 digits`)
-      if (!/^\d{5,10}$/.test(a.accountNumber)) e.push(`Linked Account ${idx + 1}: account number 5–10 digits`)
+      if (!a.accountName.trim()) e.push(`Linked Account ${idx + 1}: account name is required`)
     })
-    if (attachments.value.length < requiredStatements.value)
-      e.push(
-        `Attach a bank statement for each linked account (${requiredStatements.value} required)`,
-      )
   } else if (i === 4) {
     if (!agreed.value) e.push('You must accept the Direct Debit Terms and Conditions')
     signatures.value.forEach((s, idx) => {
@@ -245,8 +235,8 @@ function downloadCopy() {
         >
           <AttachmentsField
             v-model="attachments"
-            title="Bank Statements"
-            :required-count="requiredStatements"
+            title="Bank Statements (optional)"
+            :required-count="0"
             :hint="attachmentHint"
           />
         </LinkedAccountsStep>

@@ -106,7 +106,7 @@ function onOffsetNumber(a: LinkedAccount, e: Event) {
 
       <div class="grid2">
         <label class="field">
-          <span>Financial Institution <span class="req">*</span></span>
+          <span>Financial Institution <em>(optional)</em></span>
           <input v-model="a.financialInstitution" type="text" />
         </label>
         <label class="field">
@@ -118,7 +118,7 @@ function onOffsetNumber(a: LinkedAccount, e: Event) {
           <input v-model="a.accountName" type="text" />
         </label>
         <label class="field">
-          <span>BSB <span class="req">*</span></span>
+          <span>BSB <em>(optional)</em></span>
           <input
             :value="a.bsb"
             type="text"
@@ -129,7 +129,7 @@ function onOffsetNumber(a: LinkedAccount, e: Event) {
           />
         </label>
         <label class="field">
-          <span>Account Number <span class="req">*</span></span>
+          <span>Account Number <em>(optional)</em></span>
           <input
             :value="a.accountNumber"
             type="text"
