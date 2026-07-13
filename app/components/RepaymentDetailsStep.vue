@@ -4,6 +4,7 @@ const frequency = defineModel<'' | 'weekly' | 'fortnightly' | 'monthly'>('freque
 })
 const amountType = defineModel<'' | 'minimum' | 'fixed'>('amountType', { required: true })
 const amount = defineModel<number | null>('amount', { required: true })
+withDefaults(defineProps<{ showErrors?: boolean }>(), { showErrors: false })
 
 const freqOptions = [
   { value: 'weekly', label: 'Weekly' },
@@ -58,7 +59,11 @@ const previewAmount = computed(() =>
       </label>
     </div>
 
-    <div v-if="amountType === 'fixed'" class="amount">
+    <div
+      v-if="amountType === 'fixed'"
+      class="amount"
+      :class="{ 'amount--invalid': showErrors && !(Number(amount) > 0) }"
+    >
       <span class="amount__sign">$</span>
       <input
         v-model.number="amount"
@@ -67,9 +72,12 @@ const previewAmount = computed(() =>
         min="0"
         step="0.01"
         inputmode="decimal"
-        placeholder="0.00"
+        placeholder="e.g. 2500.00"
       />
     </div>
+    <span v-if="amountType === 'fixed' && showErrors && !(Number(amount) > 0)" class="field__err">
+      Enter your fixed repayment amount.
+    </span>
 
     <div v-if="showPreview" class="preview">
       <h4>New Repayment Schedule</h4>
@@ -101,6 +109,9 @@ const previewAmount = computed(() =>
 .amount:focus-within {
   border-color: var(--blue);
   box-shadow: 0 0 0 3px rgba(20, 69, 199, 0.12);
+}
+.amount--invalid {
+  border-color: var(--error);
 }
 .amount__sign {
   padding: 0 16px;

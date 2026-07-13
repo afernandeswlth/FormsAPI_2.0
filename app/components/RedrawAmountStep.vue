@@ -1,5 +1,6 @@
 <script setup lang="ts">
 const amount = defineModel<number | null>('amount', { required: true })
+withDefaults(defineProps<{ showErrors?: boolean }>(), { showErrors: false })
 
 const EVIDENCE_THRESHOLD = 100000
 const overThreshold = computed(() => Number(amount.value) > EVIDENCE_THRESHOLD)
@@ -10,7 +11,7 @@ const hasAmount = computed(() => Number(amount.value) > 0)
   <section class="card">
     <h2>How much would you like to redraw?</h2>
 
-    <div class="amount">
+    <div class="amount" :class="{ 'amount--invalid': showErrors && !hasAmount }">
       <span class="amount__sign">$</span>
       <input
         v-model.number="amount"
@@ -22,6 +23,9 @@ const hasAmount = computed(() => Number(amount.value) > 0)
         placeholder="0.00"
       />
     </div>
+    <span v-if="showErrors && !hasAmount" class="field__err">
+      Enter the amount you would like to redraw.
+    </span>
 
     <p v-if="hasAmount" class="notice" :class="{ 'notice--warn': overThreshold }">
       {{
@@ -45,6 +49,9 @@ const hasAmount = computed(() => Number(amount.value) > 0)
 .amount:focus-within {
   border-color: var(--blue);
   box-shadow: 0 0 0 3px rgba(20, 69, 199, 0.12);
+}
+.amount--invalid {
+  border-color: var(--error);
 }
 .amount__sign {
   padding: 0 18px;

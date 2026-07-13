@@ -15,8 +15,9 @@ const props = withDefaults(
   defineProps<{
     /** When true (an SMSF trust name was provided), "Loan Account" cannot be selected. */
     smsfProvided?: boolean
+    showErrors?: boolean
   }>(),
-  { smsfProvided: false },
+  { smsfProvided: false, showErrors: false },
 )
 
 function blank(): LinkedAccount {
@@ -109,24 +110,36 @@ function onOffsetNumber(a: LinkedAccount, e: Event) {
           type="text"
           inputmode="numeric"
           placeholder="e.g. 400001234"
+          :class="{ invalid: showErrors && !/^\d{5,10}$/.test(a.offsetAccountNumber) }"
           @input="onOffsetNumber(a, $event)"
         />
+        <span v-if="showErrors && !/^\d{5,10}$/.test(a.offsetAccountNumber)" class="field__err">
+          Enter a valid offset account number (5–10 digits).
+        </span>
       </label>
 
       <label class="field field--full acct-name">
         <span>Account Name <span class="req">*</span></span>
-        <input v-model="a.accountName" type="text" />
+        <input
+          v-model="a.accountName"
+          type="text"
+          placeholder="e.g. John Smith"
+          :class="{ invalid: showErrors && !a.accountName.trim() }"
+        />
+        <span v-if="showErrors && !a.accountName.trim()" class="field__err">
+          Account name is required.
+        </span>
       </label>
 
       <!-- External bank details only apply when linking to a loan account -->
       <div v-if="a.linkTo !== 'offset'" class="grid2">
         <label class="field">
           <span>Financial Institution <em>(optional)</em></span>
-          <input v-model="a.financialInstitution" type="text" />
+          <input v-model="a.financialInstitution" type="text" placeholder="e.g. Commonwealth Bank" />
         </label>
         <label class="field">
           <span>Branch <em>(optional)</em></span>
-          <input v-model="a.branch" type="text" />
+          <input v-model="a.branch" type="text" placeholder="e.g. Sydney CBD" />
         </label>
         <label class="field">
           <span>BSB <em>(optional)</em></span>
@@ -134,7 +147,7 @@ function onOffsetNumber(a: LinkedAccount, e: Event) {
             :value="a.bsb"
             type="text"
             inputmode="numeric"
-            placeholder="062-000"
+            placeholder="e.g. 062-000"
             maxlength="7"
             @input="onBsb(a, $event)"
           />
@@ -145,6 +158,7 @@ function onOffsetNumber(a: LinkedAccount, e: Event) {
             :value="a.accountNumber"
             type="text"
             inputmode="numeric"
+            placeholder="e.g. 12345678"
             @input="onAccountNumber(a, $event)"
           />
         </label>

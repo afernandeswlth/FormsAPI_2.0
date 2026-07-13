@@ -2,6 +2,7 @@
 const amount = defineModel<number | null>('amount', { required: true })
 const reason = defineModel<string>('reason', { required: true })
 const acknowledged = defineModel<boolean>('acknowledged', { required: true })
+withDefaults(defineProps<{ showErrors?: boolean }>(), { showErrors: false })
 
 const MAX_REASON = 1000
 
@@ -24,7 +25,7 @@ function onReason(e: Event) {
       <p class="muted">
         How much would you like to apply as a permanent principal reduction?
       </p>
-      <div class="amount">
+      <div class="amount" :class="{ 'amount--invalid': showErrors && !(Number(amount) > 0) }">
         <span class="amount__sign">$</span>
         <input
           v-model.number="amount"
@@ -36,6 +37,9 @@ function onReason(e: Event) {
           placeholder="10,000.00"
         />
       </div>
+      <span v-if="showErrors && !(Number(amount) > 0)" class="field__err">
+        Enter the amount you would like to reduce.
+      </span>
 
       <div class="info">
         <span class="info__icon">💡</span>
@@ -66,10 +70,12 @@ function onReason(e: Event) {
         <textarea
           :value="reason"
           class="reason"
+          :class="{ invalid: showErrors && !reason.trim() }"
           :maxlength="MAX_REASON"
           placeholder="Request to apply funds in available redraw (advanced position), in the amount of $25,000 as a permanent principal reduction to the loan."
           @input="onReason"
         />
+        <span v-if="showErrors && !reason.trim()" class="field__err">Please provide a reason.</span>
       </label>
       <p class="counter">{{ reason.length }} / {{ MAX_REASON }} characters</p>
     </section>
@@ -114,6 +120,12 @@ function onReason(e: Event) {
 .amount:focus-within {
   border-color: var(--blue);
   box-shadow: 0 0 0 3px rgba(20, 69, 199, 0.12);
+}
+.amount--invalid {
+  border-color: var(--error);
+}
+.reason.invalid {
+  border-color: var(--error);
 }
 .amount__sign {
   padding: 0 18px;

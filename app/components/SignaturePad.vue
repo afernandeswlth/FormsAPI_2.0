@@ -11,11 +11,18 @@
  */
 const model = defineModel<string>({ default: '' })
 
+// When true and a signature is drawn but not yet submitted, the Sign button is
+// flagged (red) so the user knows to click Sign before proceeding.
+const props = withDefaults(defineProps<{ flagUnsigned?: boolean }>(), { flagUnsigned: false })
+
 const canvas = ref<HTMLCanvasElement | null>(null)
 const okButton = ref<HTMLButtonElement | null>(null)
 const isEmpty = ref(true)
 const signed = ref(false)
 const showDialog = ref(false)
+
+const pending = computed(() => !isEmpty.value && !signed.value)
+const flagged = computed(() => props.flagUnsigned && pending.value)
 let ctx: CanvasRenderingContext2D | null = null
 let drawing = false
 let last: { x: number; y: number } | null = null
@@ -119,6 +126,7 @@ onBeforeUnmount(() => window.removeEventListener('resize', setupCanvas))
         v-if="!signed"
         type="button"
         class="sig__sign"
+        :class="{ 'sig__sign--flag': flagged }"
         :disabled="isEmpty"
         @click="openSignDialog"
       >
@@ -144,6 +152,10 @@ onBeforeUnmount(() => window.removeEventListener('resize', setupCanvas))
       </button>
     </div>
 
+    <p v-if="flagged" class="sig__flag-msg">
+      Please click “Sign” to submit your signature before continuing.
+    </p>
+
     <!-- Mandatory ID-match acknowledgement -->
     <div
       v-if="showDialog"
@@ -154,8 +166,8 @@ onBeforeUnmount(() => window.removeEventListener('resize', setupCanvas))
     >
       <div class="sig__modal">
         <p id="sig-dialog-msg" class="sig__modal-msg">
-          Please ensure your signature matches the one on your passport or ID to
-          avoid processing delays.
+          Please ensure your signature closely matches the signature on your passport or
+          government-issued ID to help avoid processing delays.
         </p>
         <button ref="okButton" type="button" class="sig__ok" @click="confirmSign">
           OK
@@ -219,6 +231,16 @@ onBeforeUnmount(() => window.removeEventListener('resize', setupCanvas))
   background: var(--line);
   color: var(--muted);
   cursor: not-allowed;
+}
+.sig__sign--flag {
+  border: 2px solid var(--error);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.18);
+}
+.sig__flag-msg {
+  margin: 8px 0 0;
+  color: var(--error);
+  font-size: 0.85rem;
+  font-weight: 500;
 }
 .sig__badge {
   display: inline-flex;

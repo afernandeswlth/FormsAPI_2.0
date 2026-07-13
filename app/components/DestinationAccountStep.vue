@@ -7,6 +7,8 @@ export type DestinationAccount = {
 
 const account = defineModel<DestinationAccount>({ required: true })
 
+withDefaults(defineProps<{ showErrors?: boolean }>(), { showErrors: false })
+
 function onBsb(e: Event) {
   const digits = (e.target as HTMLInputElement).value.replace(/\D/g, '').slice(0, 6)
   account.value.bsb = digits.length > 3 ? `${digits.slice(0, 3)}-${digits.slice(3)}` : digits
@@ -30,7 +32,16 @@ const masked = computed(() => `XXXX${account.value.accountNumber.slice(-4)}`)
     <div class="grid2">
       <label class="field field--full">
         <span>Account Name <span class="req">*</span></span>
-        <input v-model="account.accountName" type="text" autocomplete="name" />
+        <input
+          v-model="account.accountName"
+          type="text"
+          autocomplete="name"
+          placeholder="e.g. John Smith"
+          :class="{ invalid: showErrors && !account.accountName.trim() }"
+        />
+        <span v-if="showErrors && !account.accountName.trim()" class="field__err">
+          Account name is required.
+        </span>
       </label>
       <label class="field">
         <span>BSB <span class="req">*</span></span>
@@ -38,10 +49,14 @@ const masked = computed(() => `XXXX${account.value.accountNumber.slice(-4)}`)
           :value="account.bsb"
           type="text"
           inputmode="numeric"
-          placeholder="062-000"
+          placeholder="e.g. 062-000"
           maxlength="7"
+          :class="{ invalid: showErrors && !/^\d{3}-?\d{3}$/.test(account.bsb) }"
           @input="onBsb"
         />
+        <span v-if="showErrors && !/^\d{3}-?\d{3}$/.test(account.bsb)" class="field__err">
+          Enter a 6-digit BSB.
+        </span>
       </label>
       <label class="field">
         <span>Account Number <span class="req">*</span></span>
@@ -49,8 +64,13 @@ const masked = computed(() => `XXXX${account.value.accountNumber.slice(-4)}`)
           :value="account.accountNumber"
           type="text"
           inputmode="numeric"
+          placeholder="e.g. 12345678"
+          :class="{ invalid: showErrors && !/^\d{5,10}$/.test(account.accountNumber) }"
           @input="onAccountNumber"
         />
+        <span v-if="showErrors && !/^\d{5,10}$/.test(account.accountNumber)" class="field__err">
+          Enter a valid account number (5–10 digits).
+        </span>
       </label>
     </div>
 

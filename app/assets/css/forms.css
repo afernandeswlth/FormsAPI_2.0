@@ -281,6 +281,25 @@
   border-color: var(--blue);
   box-shadow: 0 0 0 3px rgba(20, 69, 199, 0.12);
 }
+/* Invalid field: red border + message */
+.field input.invalid,
+.field textarea.invalid,
+input.invalid,
+textarea.invalid {
+  border-color: var(--error);
+}
+.field input.invalid:focus,
+.field textarea.invalid:focus {
+  border-color: var(--error);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+}
+.field__err {
+  display: block;
+  margin-top: 6px;
+  color: var(--error);
+  font-size: 0.8rem;
+  font-weight: 500;
+}
 
 /* Radios */
 .radios {

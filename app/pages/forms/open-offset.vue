@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Borrower } from '../../components/BorrowersStep.vue'
 import { englishError } from '../../utils/english'
+import { isValidAuPhone } from '../../utils/validators'
 
 useHead({ title: 'Open Offset Account — WLTH Client Hub' })
 
@@ -60,12 +61,13 @@ I/We understand that the request will be reviewed before the account is opened.`
 
 // ---- Validation ----
 const errors = ref<string[]>([])
+const showErrors = ref(false)
 function validateStep(i: number): string[] {
   const e: string[] = []
   if (i === 0) {
     borrowers.value.forEach((b, idx) => {
       if (!b.firstName || !b.lastName) e.push(`Borrower ${idx + 1}: name is required`)
-      if (b.mobile.replace(/\D/g, '').length < 6) e.push(`Borrower ${idx + 1}: valid mobile required`)
+      if (!isValidAuPhone(b.mobile)) e.push(`Borrower ${idx + 1}: a valid Australian phone number is required`)
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(b.email)) e.push(`Borrower ${idx + 1}: valid email required`)
       if (!b.customerNumber?.trim()) e.push(`Borrower ${idx + 1}: customer number is required`)
     })
@@ -85,17 +87,23 @@ function validateStep(i: number): string[] {
 function next() {
   const e = validateStep(step.value)
   errors.value = e
-  if (e.length) return
+  if (e.length) {
+    showErrors.value = true
+    return
+  }
+  showErrors.value = false
   step.value = Math.min(step.value + 1, STEPS.length - 1)
   scrollTop()
 }
 function prev() {
   errors.value = []
+  showErrors.value = false
   step.value = Math.max(step.value - 1, 0)
   scrollTop()
 }
 function goTo(i: number) {
   errors.value = []
+  showErrors.value = false
   step.value = i
   scrollTop()
 }
@@ -111,7 +119,10 @@ const submitError = ref('')
 async function submit() {
   const e = validateStep(3)
   errors.value = e
-  if (e.length) return
+  if (e.length) {
+    showErrors.value = true
+    return
+  }
   submitting.value = true
   submitError.value = ''
 
@@ -202,13 +213,14 @@ function downloadCopy() {
           v-if="step === 0"
           v-model:count="borrowerCount"
           v-model:borrowers="borrowers"
+          :show-errors="showErrors"
           question="How many borrowers are associated with this loan?"
           tile-noun="Borrower"
           show-customer-number
         />
 
         <div v-if="step === 1" class="stack">
-          <LoanStep v-model:loan="loan" title="Loan To Link Offset Account" />
+          <LoanStep v-model:loan="loan" :show-errors="showErrors" title="Loan To Link Offset Account" />
           <OffsetInformationCard />
 
           <div class="card">
@@ -267,7 +279,7 @@ function downloadCopy() {
           <div v-for="(_, i) in signatures" :key="i" class="card">
             <h3 class="sig-title">Borrower {{ i + 1 }} Signature</h3>
             <p class="muted small">{{ borrowers[i]?.firstName }} {{ borrowers[i]?.lastName }}</p>
-            <SignaturePad v-model="signatures[i]" />
+            <SignaturePad v-model="signatures[i]" :flag-unsigned="showErrors" />
           </div>
 
           <p class="audit-note">

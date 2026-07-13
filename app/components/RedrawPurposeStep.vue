@@ -9,6 +9,7 @@ export type RedrawPurpose =
 
 const purpose = defineModel<RedrawPurpose>('purpose', { required: true })
 const reason = defineModel<string>('reason', { required: true })
+withDefaults(defineProps<{ showErrors?: boolean }>(), { showErrors: false })
 
 const options = [
   { value: 'property', icon: '🏠', label: 'Property Purchase / Settlement' },
@@ -42,8 +43,12 @@ const options = [
       <textarea
         v-model="reason"
         rows="4"
-        placeholder="Please tell us how the funds will be used."
+        placeholder="e.g. Funds will be used towards a property purchase settling on 12/08/2026."
+        :class="{ invalid: showErrors && !reason.trim() }"
       />
+      <span v-if="showErrors && !reason.trim()" class="field__err">
+        Please tell us how the funds will be used.
+      </span>
     </label>
   </section>
 </template>

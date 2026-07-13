@@ -2,6 +2,7 @@
 import { icons } from '../../assets/icons'
 import { processFile, MAX_TOTAL_ATTACHMENT_BYTES } from '../../utils/attachments'
 import { englishError } from '../../utils/english'
+import { stripDigits, isValidName, isValidAuPhone, isValidEmail } from '../../utils/validators'
 
 useHead({ title: 'Direct Debit Request — WLTH Client Hub' })
 
@@ -138,12 +139,13 @@ function resize<T>(arr: Ref<T[]>, n: number, make: () => T) {
 
 // ---- Per-step validation ----
 const errors = ref<string[]>([])
+const showErrors = ref(false)
 function validateStep(i: number): string[] {
   const e: string[] = []
   if (i === 0) {
     borrowers.value.forEach((b, idx) => {
       if (!b.firstName || !b.lastName) e.push(`Borrower ${idx + 1}: name is required`)
-      if (b.mobile.replace(/\D/g, '').length < 6) e.push(`Borrower ${idx + 1}: valid mobile required`)
+      if (!isValidAuPhone(b.mobile)) e.push(`Borrower ${idx + 1}: a valid Australian phone number is required`)
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(b.email)) e.push(`Borrower ${idx + 1}: valid email required`)
     })
   } else if (i === 1) {
@@ -191,17 +193,23 @@ function validateStep(i: number): string[] {
 function next() {
   const e = validateStep(step.value)
   errors.value = e
-  if (e.length) return
+  if (e.length) {
+    showErrors.value = true
+    return
+  }
+  showErrors.value = false
   step.value = Math.min(step.value + 1, STEPS.length - 1)
   scrollTop()
 }
 function prev() {
   errors.value = []
+  showErrors.value = false
   step.value = Math.max(step.value - 1, 0)
   scrollTop()
 }
 function goTo(i: number) {
   errors.value = []
+  showErrors.value = false
   step.value = i
   scrollTop()
 }
@@ -217,7 +225,10 @@ const submitError = ref('')
 async function submit() {
   const e = validateStep(5)
   errors.value = e
-  if (e.length) return
+  if (e.length) {
+    showErrors.value = true
+    return
+  }
   submitting.value = true
   submitError.value = ''
 
@@ -370,19 +381,59 @@ By signing this request you acknowledge that you have read and understood this D
             <div class="grid2">
               <label class="field">
                 <span>First Name</span>
-                <input v-model="b.firstName" type="text" autocomplete="given-name" />
+                <input
+                  v-model="b.firstName"
+                  type="text"
+                  autocomplete="given-name"
+                  placeholder="e.g. John"
+                  :class="{ invalid: showErrors && !isValidName(b.firstName) }"
+                  @input="b.firstName = stripDigits(b.firstName)"
+                />
+                <span v-if="showErrors && !isValidName(b.firstName)" class="field__err">
+                  Enter a first name (letters only).
+                </span>
               </label>
               <label class="field">
                 <span>Last Name</span>
-                <input v-model="b.lastName" type="text" autocomplete="family-name" />
+                <input
+                  v-model="b.lastName"
+                  type="text"
+                  autocomplete="family-name"
+                  placeholder="e.g. Smith"
+                  :class="{ invalid: showErrors && !isValidName(b.lastName) }"
+                  @input="b.lastName = stripDigits(b.lastName)"
+                />
+                <span v-if="showErrors && !isValidName(b.lastName)" class="field__err">
+                  Enter a last name (letters only).
+                </span>
               </label>
               <label class="field">
                 <span>Mobile</span>
-                <input v-model="b.mobile" type="tel" inputmode="tel" autocomplete="tel" />
+                <input
+                  v-model="b.mobile"
+                  type="tel"
+                  inputmode="tel"
+                  autocomplete="tel"
+                  placeholder="e.g. 0412 345 678"
+                  :class="{ invalid: showErrors && !isValidAuPhone(b.mobile) }"
+                />
+                <span v-if="showErrors && !isValidAuPhone(b.mobile)" class="field__err">
+                  Enter a valid Australian phone number.
+                </span>
               </label>
               <label class="field">
                 <span>Email</span>
-                <input v-model="b.email" type="email" inputmode="email" autocomplete="email" />
+                <input
+                  v-model="b.email"
+                  type="email"
+                  inputmode="email"
+                  autocomplete="email"
+                  placeholder="e.g. john@example.com"
+                  :class="{ invalid: showErrors && !isValidEmail(b.email) }"
+                />
+                <span v-if="showErrors && !isValidEmail(b.email)" class="field__err">
+                  Enter a valid email address.
+                </span>
               </label>
             </div>
           </div>
@@ -393,11 +444,20 @@ By signing this request you acknowledge that you have read and understood this D
           <h2>Loan Details</h2>
           <label class="field">
             <span>Loan Account Number</span>
-            <input v-model="loan.accountNumber" type="text" inputmode="numeric" />
+            <input
+              v-model="loan.accountNumber"
+              type="text"
+              inputmode="numeric"
+              placeholder="e.g. 400123456"
+              :class="{ invalid: showErrors && !loan.accountNumber.trim() }"
+            />
+            <span v-if="showErrors && !loan.accountNumber.trim()" class="field__err">
+              Loan account number is required.
+            </span>
           </label>
           <label class="field">
             <span>Comments <em>(optional)</em></span>
-            <textarea v-model="loan.comments" rows="4" />
+            <textarea v-model="loan.comments" rows="4" placeholder="Anything else we should know?" />
           </label>
         </section>
 
@@ -433,7 +493,14 @@ By signing this request you acknowledge that you have read and understood this D
                 type="text"
                 inputmode="numeric"
                 placeholder="e.g. 400001234"
+                :class="{ invalid: showErrors && !/^\d{5,10}$/.test(offsetAccountNumber.replace(/\D/g, '')) }"
               />
+              <span
+                v-if="showErrors && !/^\d{5,10}$/.test(offsetAccountNumber.replace(/\D/g, ''))"
+                class="field__err"
+              >
+                Enter a valid offset account number (5–10 digits).
+              </span>
             </label>
             <p class="muted small">
               Your repayments will be direct debited from this WLTH offset account. No bank
@@ -458,15 +525,25 @@ By signing this request you acknowledge that you have read and understood this D
             <div class="grid2">
               <label class="field">
                 <span>Financial Institution</span>
-                <input v-model="a.financialInstitution" type="text" />
+                <input
+                  v-model="a.financialInstitution"
+                  type="text"
+                  placeholder="e.g. Commonwealth Bank"
+                  :class="{ invalid: showErrors && !a.financialInstitution.trim() }"
+                />
               </label>
               <label class="field">
                 <span>Branch <em>(optional)</em></span>
-                <input v-model="a.branch" type="text" />
+                <input v-model="a.branch" type="text" placeholder="e.g. Sydney CBD" />
               </label>
               <label class="field field--full">
                 <span>Account Name</span>
-                <input v-model="a.accountName" type="text" />
+                <input
+                  v-model="a.accountName"
+                  type="text"
+                  placeholder="e.g. John Smith"
+                  :class="{ invalid: showErrors && !a.accountName.trim() }"
+                />
               </label>
               <label class="field">
                 <span>BSB</span>
@@ -474,14 +551,21 @@ By signing this request you acknowledge that you have read and understood this D
                   :value="a.bsb"
                   type="text"
                   inputmode="numeric"
-                  placeholder="062-000"
+                  placeholder="e.g. 062-000"
                   maxlength="7"
+                  :class="{ invalid: showErrors && !/^\d{3}-?\d{3}$/.test(a.bsb) }"
                   @input="onBsb(a, $event)"
                 />
               </label>
               <label class="field">
                 <span>Account Number</span>
-                <input v-model="a.accountNumber" type="text" inputmode="numeric" />
+                <input
+                  v-model="a.accountNumber"
+                  type="text"
+                  inputmode="numeric"
+                  placeholder="e.g. 12345678"
+                  :class="{ invalid: showErrors && !/^\d{5,10}$/.test(a.accountNumber) }"
+                />
               </label>
             </div>
           </div>
@@ -667,7 +751,7 @@ By signing this request you acknowledge that you have read and understood this D
           <div v-for="(_, i) in signatures" :key="i" class="card">
             <h3 class="sig-title">Borrower {{ i + 1 }} Signature</h3>
             <p class="muted small">{{ borrowers[i]?.firstName }} {{ borrowers[i]?.lastName }}</p>
-            <SignaturePad v-model="signatures[i]" />
+            <SignaturePad v-model="signatures[i]" :flag-unsigned="showErrors" />
           </div>
 
           <p class="audit-note">

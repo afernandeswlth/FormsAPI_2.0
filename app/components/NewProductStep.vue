@@ -5,6 +5,7 @@ const productType = defineModel<ProductType>('productType', { required: true })
 const interestRate = defineModel<number | null>('interestRate', { required: true })
 const term = defineModel<string>('term', { required: true })
 const reason = defineModel<string>('reason', { required: true })
+withDefaults(defineProps<{ showErrors?: boolean }>(), { showErrors: false })
 
 const products = [
   {
@@ -127,8 +128,12 @@ watch(productType, () => {
         <textarea
           v-model="reason"
           class="reason"
+          :class="{ invalid: showErrors && !reason.trim() }"
           placeholder="Example: I would like greater repayment certainty and would prefer a fixed rate product for the next 3 years."
         />
+        <span v-if="showErrors && !reason.trim()" class="field__err">
+          Please tell us why you would like to switch products.
+        </span>
       </label>
     </section>
   </div>
@@ -250,6 +255,9 @@ watch(productType, () => {
   font-weight: 400;
   color: var(--ink);
   resize: vertical;
+}
+.reason.invalid {
+  border-color: var(--error);
 }
 .reason:focus {
   outline: none;
