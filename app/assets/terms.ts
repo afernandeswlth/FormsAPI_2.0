@@ -22,3 +22,17 @@ This Direct Debit Request (DDR) and DDR Service Agreement sets out the terms on 
 7. Direct debiting may not be available on all accounts. You should check your account details against a recent statement and confirm with your financial institution if you are uncertain.
 
 By signing this request you acknowledge that you have read and understood this DDR Service Agreement and authorise the arrangements described above.`
+
+/**
+ * Linked Account Nomination declaration / terms & conditions.
+ * Shown on the sign step of the Linked Account Nomination form.
+ */
+export const linkedAccountTerms = `☐ I/We declare that the information provided in this form is true, complete and correct.
+
+☐ I/We authorise WLTH to add, update or remove the nominated linked account(s) on my/our home loan as requested.
+
+☐ I/We acknowledge that the nominated account may be used for future loan transactions, including direct debit repayments where applicable.
+
+☐ I/We confirm that I/we are authorised to nominate the account(s) provided and that the account details are accurate.
+
+☐ I/We understand that submitting this form does not guarantee my/our request will be approved and that WLTH may contact me/us to verify my/our instructions or request additional information before processing.`

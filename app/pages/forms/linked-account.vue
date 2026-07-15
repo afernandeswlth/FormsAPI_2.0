@@ -2,7 +2,7 @@
 import type { Borrower } from '../../components/BorrowersStep.vue'
 import type { LinkedAccount } from '../../components/LinkedAccountsStep.vue'
 import type { Attachment } from '../../components/AttachmentsField.vue'
-import { directDebitTerms } from '../../assets/terms'
+import { linkedAccountTerms } from '../../assets/terms'
 import { englishError } from '../../utils/english'
 import { isValidAuPhone } from '../../utils/validators'
 
@@ -90,7 +90,7 @@ function validateStep(i: number): string[] {
         `Attach a bank statement for each linked account (${requiredStatements.value} required)`,
       )
   } else if (i === 4) {
-    if (!agreed.value) e.push('You must accept the Direct Debit Terms and Conditions')
+    if (!agreed.value) e.push('You must accept the Linked Account Nomination Terms and Conditions')
     signatures.value.forEach((s, idx) => {
       if (!s) e.push(`Borrower ${idx + 1} must sign`)
     })
@@ -323,9 +323,9 @@ function downloadCopy() {
           <TermsAccordion
             v-model="agreed"
             :show-errors="showErrors"
-            title="Direct Debit Terms & Conditions"
-            :content="directDebitTerms"
-            agree-label="I have read and agree to the Direct Debit Terms and Conditions."
+            title="Linked Account Nomination Terms & Conditions"
+            :content="linkedAccountTerms"
+            agree-label="I have read and agree to the Linked Account Nomination Terms and Conditions."
           />
 
           <div v-for="(_, i) in signatures" :key="i" class="card">
