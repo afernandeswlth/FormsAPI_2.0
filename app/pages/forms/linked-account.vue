@@ -79,6 +79,11 @@ function validateStep(i: number): string[] {
       if (a.linkTo === 'offset' && !/^\d{5,10}$/.test(a.offsetAccountNumber.replace(/\D/g, '')))
         e.push(`Linked Account ${idx + 1}: a valid offset account number (5–10 digits) is required`)
       if (!a.accountName.trim()) e.push(`Linked Account ${idx + 1}: account name is required`)
+      if (!a.financialInstitution.trim())
+        e.push(`Linked Account ${idx + 1}: financial institution is required`)
+      if (!/^\d{3}-?\d{3}$/.test(a.bsb)) e.push(`Linked Account ${idx + 1}: a valid BSB is required`)
+      if (!/^\d{5,10}$/.test(a.accountNumber))
+        e.push(`Linked Account ${idx + 1}: a valid account number is required`)
     })
     if (attachments.value.length < requiredStatements.value)
       e.push(
@@ -252,11 +257,19 @@ function downloadCopy() {
           tile-noun="Borrower"
         />
 
-        <LoanStep v-if="step === 1" v-model:loan="loan" :show-errors="showErrors" title="Loan Information" show-smsf />
+        <LoanStep
+          v-if="step === 1"
+          v-model:loan="loan"
+          :show-errors="showErrors"
+          title="Loan Information"
+          show-smsf
+          hide-comments
+        />
 
         <LinkedAccountsStep
           v-if="step === 2"
           v-model:accounts="linkedAccounts"
+          v-model:comments="loan.comments"
           :smsf-provided="smsfProvided"
           :show-errors="showErrors"
         >

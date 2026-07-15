@@ -63,19 +63,17 @@ const linkedAccountSchema = z.object({
 })
 
 // Linked Account Nomination: which WLTH account repayments link to (and, for
-// offset, its number). Institution/branch/BSB/account number are optional; a
-// bank statement is not required.
+// offset, its number). The nominated external account details — institution,
+// account name, BSB and account number — are required for both loan and offset
+// links; branch stays optional.
 const nominatedAccountSchema = z.object({
   linkTo: z.enum(['loan', 'offset']).optional(),
   offsetAccountNumber: z.string().optional(),
-  financialInstitution: z.string().optional(),
+  financialInstitution: z.string().min(1, 'Financial institution is required'),
   branch: z.string().optional(),
   accountName: z.string().min(1, 'Account name is required'),
-  bsb: z
-    .string()
-    .optional()
-    .transform((v) => (v ?? '').replace(/-/g, '')),
-  accountNumber: z.string().optional(),
+  bsb,
+  accountNumber,
 })
 
 const attachmentSchema = z.object({

@@ -2,11 +2,21 @@
 export type Loan = { accountNumber: string; comments: string; smsfTrustName?: string }
 
 const loan = defineModel<Loan>('loan', { required: true })
-withDefaults(defineProps<{ title?: string; showSmsf?: boolean; showErrors?: boolean }>(), {
-  title: 'Loan Details',
-  showSmsf: false,
-  showErrors: false,
-})
+withDefaults(
+  defineProps<{
+    title?: string
+    showSmsf?: boolean
+    showErrors?: boolean
+    /** Hide the Comments field (e.g. when it's rendered in a later step). */
+    hideComments?: boolean
+  }>(),
+  {
+    title: 'Loan Details',
+    showSmsf: false,
+    showErrors: false,
+    hideComments: false,
+  },
+)
 </script>
 
 <template>
@@ -29,7 +39,7 @@ withDefaults(defineProps<{ title?: string; showSmsf?: boolean; showErrors?: bool
       <span>SMSF Trust Name <em>(optional)</em></span>
       <input v-model="loan.smsfTrustName" type="text" placeholder="e.g. Smith Family Super Fund" />
     </label>
-    <label class="field" style="margin-top: 18px">
+    <label v-if="!hideComments" class="field" style="margin-top: 18px">
       <span>Comments <em>(optional)</em></span>
       <textarea v-model="loan.comments" rows="4" placeholder="Anything else we should know?" />
     </label>

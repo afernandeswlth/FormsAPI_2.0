@@ -10,6 +10,7 @@ export type LinkedAccount = {
 }
 
 const accounts = defineModel<LinkedAccount[]>('accounts', { required: true })
+const comments = defineModel<string>('comments', { default: '' })
 
 const props = withDefaults(
   defineProps<{
@@ -32,13 +33,10 @@ function blank(): LinkedAccount {
   }
 }
 
-// Offset accounts don't use external bank details — clear them on selection.
+// Both loan and offset links capture the nominated external account details,
+// so selecting offset only sets the link type (details are kept).
 function selectOffset(a: LinkedAccount) {
   a.linkTo = 'offset'
-  a.financialInstitution = ''
-  a.branch = ''
-  a.bsb = ''
-  a.accountNumber = ''
 }
 
 function addAccount() {
@@ -131,39 +129,61 @@ function onOffsetNumber(a: LinkedAccount, e: Event) {
         </span>
       </label>
 
-      <!-- External bank details only apply when linking to a loan account -->
-      <div v-if="a.linkTo !== 'offset'" class="grid2">
+      <!-- Nominated external account details (required for loan and offset links) -->
+      <div class="grid2">
         <label class="field">
-          <span>Financial Institution <em>(optional)</em></span>
-          <input v-model="a.financialInstitution" type="text" placeholder="e.g. Commonwealth Bank" />
+          <span>Financial Institution <span class="req">*</span></span>
+          <input
+            v-model="a.financialInstitution"
+            type="text"
+            placeholder="e.g. Commonwealth Bank"
+            :class="{ invalid: showErrors && !a.financialInstitution.trim() }"
+          />
+          <span v-if="showErrors && !a.financialInstitution.trim()" class="field__err">
+            Financial institution is required.
+          </span>
         </label>
         <label class="field">
           <span>Branch <em>(optional)</em></span>
           <input v-model="a.branch" type="text" placeholder="e.g. Sydney CBD" />
         </label>
         <label class="field">
-          <span>BSB <em>(optional)</em></span>
+          <span>BSB <span class="req">*</span></span>
           <input
             :value="a.bsb"
             type="text"
             inputmode="numeric"
             placeholder="e.g. 062-000"
             maxlength="7"
+            :class="{ invalid: showErrors && !/^\d{3}-?\d{3}$/.test(a.bsb) }"
             @input="onBsb(a, $event)"
           />
+          <span v-if="showErrors && !/^\d{3}-?\d{3}$/.test(a.bsb)" class="field__err">
+            Enter a valid 6-digit BSB.
+          </span>
         </label>
         <label class="field">
-          <span>Account Number <em>(optional)</em></span>
+          <span>Account Number <span class="req">*</span></span>
           <input
             :value="a.accountNumber"
             type="text"
             inputmode="numeric"
             placeholder="e.g. 12345678"
+            :class="{ invalid: showErrors && !/^\d{5,10}$/.test(a.accountNumber) }"
             @input="onAccountNumber(a, $event)"
           />
+          <span v-if="showErrors && !/^\d{5,10}$/.test(a.accountNumber)" class="field__err">
+            Enter a valid account number (5–10 digits).
+          </span>
         </label>
       </div>
     </div>
+
+    <!-- Comments — sits between the linked accounts and the bank statements -->
+    <label class="field comments-field">
+      <span>Comments <em>(optional)</em></span>
+      <textarea v-model="comments" rows="4" placeholder="Anything else we should know?" />
+    </label>
 
     <!-- Bank statement upload(s) slotted in by the parent -->
     <slot />
@@ -240,6 +260,9 @@ function onOffsetNumber(a: LinkedAccount, e: Event) {
 .offset-field,
 .acct-name {
   margin-bottom: 18px;
+}
+.comments-field {
+  margin-top: 24px;
 }
 .add-account {
   margin-top: 22px;
