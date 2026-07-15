@@ -196,7 +196,7 @@ function downloadCopy() {
         heading="Repayment Change Request Submitted"
         message="Thank you. Your request has been submitted to the WLTH team for review.&#10;&#10;We will contact you if any additional information is required."
         :reference="result.reference"
-        :download-href="`/api/requests/repayment-change/${result.id}/pdf`"
+        :download-href="`/api/requests/repayment-change/${result.id}/pdf?ref=${result.reference}`"
       />
 
       <template v-else>

@@ -232,7 +232,7 @@ function downloadCopy() {
         heading="Linked Account Nomination Submitted"
         message="Thank you. Your request has been received and will be reviewed by the WLTH team.&#10;&#10;A confirmation email has been sent to your nominated email address."
         :reference="result.reference"
-        :download-href="`/api/requests/linked-account/${result.id}/pdf`"
+        :download-href="`/api/requests/linked-account/${result.id}/pdf?ref=${result.reference}`"
       />
 
       <template v-else>

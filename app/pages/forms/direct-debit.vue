@@ -124,6 +124,21 @@ const repayment = ref<{
   amount: number | null
 }>({ frequency: '', amountType: '', amount: null })
 
+const formattedRepayment = computed(() =>
+  typeof repayment.value.amount === 'number' && repayment.value.amount > 0
+    ? new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(
+        repayment.value.amount,
+      )
+    : '',
+)
+// Confirmation shown once a custom amount and frequency are entered.
+const showRepaymentConfirm = computed(
+  () =>
+    repayment.value.amountType === 'other' &&
+    !!formattedRepayment.value &&
+    !!repayment.value.frequency,
+)
+
 // ---- Step 6: Sign ----
 const agreed = ref(false)
 const signatures = ref<string[]>([''])
@@ -353,7 +368,7 @@ By signing this request you acknowledge that you have read and understood this D
         <div class="success__actions">
           <NuxtLink to="/" class="btn btn--primary">Back to Client Hub</NuxtLink>
           <a
-            :href="`/api/requests/direct-debit/${result.id}/pdf`"
+            :href="`/api/requests/direct-debit/${result.id}/pdf?ref=${result.reference}`"
             class="btn btn--ghost"
           >Download Submission Copy</a>
         </div>
@@ -674,11 +689,29 @@ By signing this request you acknowledge that you have read and understood this D
 
           <label v-if="repayment.amountType === 'other'" class="field field--money">
             <span>Amount</span>
-            <div class="money">
+            <div
+              class="money"
+              :class="{ 'money--invalid': showErrors && !(Number(repayment.amount) > 0) }"
+            >
               <i>$</i>
-              <input v-model.number="repayment.amount" type="number" min="0" step="0.01" inputmode="decimal" />
+              <input
+                v-model.number="repayment.amount"
+                type="number"
+                min="0"
+                step="0.01"
+                inputmode="decimal"
+                placeholder="e.g. 2500.00"
+              />
             </div>
+            <span v-if="showErrors && !(Number(repayment.amount) > 0)" class="field__err">
+              Enter the repayment amount.
+            </span>
           </label>
+
+          <div v-if="showRepaymentConfirm" class="confirm">
+            Are you sure? Your repayments will be
+            <strong>{{ formattedRepayment }} {{ repayment.frequency }}</strong>.
+          </div>
         </section>
 
         <!-- STEP 5: REVIEW -->
@@ -1221,6 +1254,25 @@ By signing this request you acknowledge that you have read and understood this D
   border-radius: 12px;
   overflow: hidden;
   max-width: 260px;
+}
+.field--money .money--invalid {
+  border-color: var(--error);
+}
+.confirm {
+  margin-top: 18px;
+  padding: 14px 18px;
+  border: 1.5px solid var(--line);
+  border-left: 5px solid var(--aqua);
+  border-radius: 12px;
+  background: var(--surface-muted, #fbfcfe);
+  color: var(--navy);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  max-width: 420px;
+}
+.confirm strong {
+  color: var(--navy);
+  text-transform: capitalize;
 }
 .field--money i {
   padding: 0 14px;

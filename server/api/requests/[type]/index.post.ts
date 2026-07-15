@@ -10,6 +10,7 @@ import { bodySchemas } from '~~/server/utils/validation'
 import { createRequest } from '~~/server/utils/store'
 import { fillTemplate } from '~~/server/utils/pdf'
 import { emailRequestPdf } from '~~/server/utils/mail'
+import { uploadSubmissionPdf } from '~~/server/utils/supabase'
 
 /**
  * POST /api/requests/:type
@@ -45,6 +46,9 @@ export default defineEventHandler(async (event) => {
   // the submission — any error is logged and the client still gets its reference.
   try {
     const { bytes, filename } = await fillTemplate(record)
+    // Persist the PDF so the "Download Submission Copy" link works later, even
+    // though the in-memory store does not survive across serverless invocations.
+    await uploadSubmissionPdf(type, record.id, bytes)
     await emailRequestPdf(record, bytes, filename)
   } catch (err) {
     console.error(`[mail] failed to email request ${record.reference}:`, err)

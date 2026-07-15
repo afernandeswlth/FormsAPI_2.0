@@ -205,7 +205,7 @@ function downloadCopy() {
         heading="Offset Account Request Submitted"
         message="Thank you. Your request to open an offset account has been received.&#10;&#10;The WLTH team will review your application and contact you if any further information is required."
         :reference="result.reference"
-        :download-href="`/api/requests/open-offset/${result.id}/pdf`"
+        :download-href="`/api/requests/open-offset/${result.id}/pdf?ref=${result.reference}`"
       />
 
       <template v-else>

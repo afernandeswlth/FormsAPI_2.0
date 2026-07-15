@@ -196,7 +196,7 @@ function downloadCopy() {
         heading="Principal Reduction Request Submitted"
         message="Thank you. Your Permanent Principal Reduction Request has been submitted to the WLTH team for review and processing.&#10;&#10;We will contact you if any additional information is required."
         :reference="result.reference"
-        :download-href="`/api/requests/principal-reduction/${result.id}/pdf`"
+        :download-href="`/api/requests/principal-reduction/${result.id}/pdf?ref=${result.reference}`"
       />
 
       <template v-else>

@@ -38,3 +38,40 @@ export async function downloadAttachment(path: string): Promise<Buffer | null> {
   if (error || !data) return null
   return Buffer.from(await data.arrayBuffer())
 }
+
+/** Bucket path for a submission's completed PDF. */
+function submissionPath(type: string, id: string): string {
+  return `submissions/${type}/${id}.pdf`
+}
+
+/**
+ * Persist a submission's completed PDF so it can be downloaded later.
+ *
+ * The in-memory request store does not survive across serverless invocations,
+ * so the "Download Submission Copy" link would otherwise 404 in production.
+ * Storing the PDF in Supabase makes it durable. Returns false (never throws) if
+ * Supabase is not configured or the upload fails.
+ */
+export async function uploadSubmissionPdf(
+  type: string,
+  id: string,
+  bytes: Uint8Array,
+): Promise<boolean> {
+  if (!supabaseConfigured()) return false
+  const { error } = await supabaseAdmin()
+    .storage.from(SUPABASE_BUCKET)
+    .upload(submissionPath(type, id), Buffer.from(bytes), {
+      contentType: 'application/pdf',
+      upsert: true,
+    })
+  if (error) {
+    console.error('[supabase] submission PDF upload failed:', error)
+    return false
+  }
+  return true
+}
+
+/** Download a previously stored submission PDF (null if missing/error). */
+export async function downloadSubmissionPdf(type: string, id: string): Promise<Buffer | null> {
+  return downloadAttachment(submissionPath(type, id))
+}
