@@ -23,6 +23,8 @@ const showDialog = ref(false)
 
 const pending = computed(() => !isEmpty.value && !signed.value)
 const flagged = computed(() => props.flagUnsigned && pending.value)
+// Errors are showing and this pad hasn't been signed (empty OR drawn-but-unsigned).
+const needsSignature = computed(() => props.flagUnsigned && !signed.value)
 let ctx: CanvasRenderingContext2D | null = null
 let drawing = false
 let last: { x: number; y: number } | null = null
@@ -113,7 +115,7 @@ onBeforeUnmount(() => window.removeEventListener('resize', setupCanvas))
     <canvas
       ref="canvas"
       class="sig__canvas"
-      :class="{ 'is-signed': signed }"
+      :class="{ 'is-signed': signed, 'sig__canvas--flag': needsSignature }"
       @pointerdown.prevent="start"
       @pointermove.prevent="move"
       @pointerup="end"
@@ -155,6 +157,9 @@ onBeforeUnmount(() => window.removeEventListener('resize', setupCanvas))
     <p v-if="flagged" class="sig__flag-msg">
       Please click “Sign” to submit your signature before continuing.
     </p>
+    <p v-else-if="needsSignature" class="sig__flag-msg">
+      A signature is required — draw it above and click “Sign”.
+    </p>
 
     <!-- Mandatory ID-match acknowledgement -->
     <div
@@ -195,6 +200,9 @@ onBeforeUnmount(() => window.removeEventListener('resize', setupCanvas))
   border-style: solid;
   border-color: var(--success);
   cursor: default;
+}
+.sig__canvas--flag {
+  border-color: var(--error);
 }
 .sig__hint {
   position: absolute;

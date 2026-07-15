@@ -101,6 +101,9 @@ function onReason(e: Event) {
         <input v-model="acknowledged" type="checkbox" />
         <span>I understand and accept the above acknowledgement.</span>
       </label>
+      <span v-if="showErrors && !acknowledged" class="field__err">
+        You must accept the acknowledgement.
+      </span>
     </section>
   </div>
 </template>

@@ -70,6 +70,9 @@ watch(productType, () => {
           <span class="product__label">{{ p.label }}</span>
         </button>
       </div>
+      <span v-if="showErrors && !productType" class="field__err">
+        Select the product you would like to switch to.
+      </span>
 
       <template v-if="selected">
         <div class="info">
@@ -100,10 +103,11 @@ watch(productType, () => {
           <h3>{{ termQuestion }}</h3>
           <label class="field" style="max-width: 320px">
             <span>Period <span class="req">*</span></span>
-            <select v-model="term" class="select">
+            <select v-model="term" class="select" :class="{ invalid: showErrors && !term }">
               <option value="" disabled>Select a period</option>
               <option v-for="t in TERM_OPTIONS" :key="t" :value="t">{{ t }}</option>
             </select>
+            <span v-if="showErrors && !term" class="field__err">Select a period.</span>
           </label>
         </template>
       </template>
@@ -245,6 +249,9 @@ watch(productType, () => {
   outline: none;
   border-color: var(--blue);
   box-shadow: 0 0 0 3px rgba(20, 69, 199, 0.12);
+}
+.select.invalid {
+  border-color: var(--error);
 }
 .reason {
   min-height: 180px;

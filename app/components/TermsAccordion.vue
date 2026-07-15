@@ -5,8 +5,9 @@ withDefaults(
     title: string
     content: string
     agreeLabel?: string
+    showErrors?: boolean
   }>(),
-  { agreeLabel: '' },
+  { agreeLabel: '', showErrors: false },
 )
 const open = ref(false)
 </script>
@@ -27,5 +28,8 @@ const open = ref(false)
       <input v-model="agreed" type="checkbox" />
       <span>{{ agreeLabel || `I have read and agree to the ${title}.` }}</span>
     </label>
+    <span v-if="showErrors && !agreed" class="field__err">
+      You must accept the terms to continue.
+    </span>
   </div>
 </template>

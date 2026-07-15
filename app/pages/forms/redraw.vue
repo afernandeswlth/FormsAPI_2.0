@@ -292,6 +292,7 @@ function downloadCopy() {
                 accept=".pdf,.docx,image/*"
                 :required-count="evidenceRequiredCount"
                 :hint="evidenceHint"
+                :show-errors="showErrors"
               />
             </div>
           </div>
@@ -341,7 +342,8 @@ function downloadCopy() {
 
         <!-- Sign -->
         <div v-if="step === 6" class="stack">
-          <DeclarationCard v-model="agreed" title="Borrower Declaration" :content="declarationText" />
+          <DeclarationCard v-model="agreed"
+            :show-errors="showErrors" title="Borrower Declaration" :content="declarationText" />
 
           <div v-for="(_, i) in signatures" :key="i" class="card">
             <h3 class="sig-title">Borrower {{ i + 1 }} Signature</h3>
@@ -355,11 +357,8 @@ function downloadCopy() {
           </p>
         </div>
 
-        <div v-if="errors.length || submitError" class="errors" role="alert">
-          <p v-if="submitError">{{ submitError }}</p>
-          <ul v-else>
-            <li v-for="(e, i) in errors" :key="i">{{ e }}</li>
-          </ul>
+        <div v-if="submitError" class="errors" role="alert">
+          <p>{{ submitError }}</p>
         </div>
 
         <FormNav

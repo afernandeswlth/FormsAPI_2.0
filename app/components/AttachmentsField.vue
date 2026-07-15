@@ -18,6 +18,7 @@ const props = withDefaults(
     large?: boolean
     /** Drop the top divider when used as the sole content of a card. */
     flush?: boolean
+    showErrors?: boolean
   }>(),
   {
     title: 'Attachments',
@@ -27,6 +28,7 @@ const props = withDefaults(
     maxBytes: 10 * 1024 * 1024,
     large: false,
     flush: false,
+    showErrors: false,
   },
 )
 
@@ -139,5 +141,8 @@ function formatSize(bytes: number) {
     </ul>
 
     <p v-if="error" class="file-err">{{ error }}</p>
+    <span v-if="showErrors && requiredCount > 0 && !met" class="field__err">
+      Attach at least {{ requiredCount }} supporting document{{ requiredCount > 1 ? 's' : '' }}.
+    </span>
   </div>
 </template>

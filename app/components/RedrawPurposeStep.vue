@@ -37,6 +37,7 @@ const options = [
         <span class="purpose__label">{{ o.label }}</span>
       </button>
     </div>
+    <span v-if="showErrors && !purpose" class="field__err">Select a redraw purpose.</span>
 
     <label class="field" style="margin-top: 28px">
       <span>Redraw Reason <span class="req">*</span></span>

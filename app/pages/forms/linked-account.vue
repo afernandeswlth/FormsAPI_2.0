@@ -265,6 +265,7 @@ function downloadCopy() {
             title="Bank Statements"
             :required-count="requiredStatements"
             :hint="attachmentHint"
+            :show-errors="showErrors"
           />
         </LinkedAccountsStep>
 
@@ -308,6 +309,7 @@ function downloadCopy() {
         <div v-if="step === 4" class="stack">
           <TermsAccordion
             v-model="agreed"
+            :show-errors="showErrors"
             title="Direct Debit Terms & Conditions"
             :content="directDebitTerms"
             agree-label="I have read and agree to the Direct Debit Terms and Conditions."
@@ -325,11 +327,8 @@ function downloadCopy() {
           </p>
         </div>
 
-        <div v-if="errors.length || submitError" class="errors" role="alert">
-          <p v-if="submitError">{{ submitError }}</p>
-          <ul v-else>
-            <li v-for="(e, i) in errors" :key="i">{{ e }}</li>
-          </ul>
+        <div v-if="submitError" class="errors" role="alert">
+          <p>{{ submitError }}</p>
         </div>
 
         <FormNav

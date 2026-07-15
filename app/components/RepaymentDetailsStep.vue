@@ -45,6 +45,7 @@ const previewAmount = computed(() =>
         {{ f.label }}
       </button>
     </div>
+    <span v-if="showErrors && !frequency" class="field__err">Select a payment frequency.</span>
 
     <h3>Repayment Amount</h3>
     <p class="muted">What would you like your new repayment amount to be?</p>
@@ -58,6 +59,9 @@ const previewAmount = computed(() =>
         <span>Fixed amount</span>
       </label>
     </div>
+    <span v-if="showErrors && !amountType" class="field__err">
+      Select a repayment amount option.
+    </span>
 
     <div
       v-if="amountType === 'fixed'"

@@ -1,8 +1,12 @@
 <script setup lang="ts">
 const agreed = defineModel<boolean>({ required: true })
 withDefaults(
-  defineProps<{ title?: string; content: string; agreeLabel?: string }>(),
-  { title: 'Borrower Declaration', agreeLabel: 'I have read and agree to the above declaration.' },
+  defineProps<{ title?: string; content: string; agreeLabel?: string; showErrors?: boolean }>(),
+  {
+    title: 'Borrower Declaration',
+    agreeLabel: 'I have read and agree to the above declaration.',
+    showErrors: false,
+  },
 )
 </script>
 
@@ -14,6 +18,9 @@ withDefaults(
       <input v-model="agreed" type="checkbox" />
       <span>{{ agreeLabel }}</span>
     </label>
+    <span v-if="showErrors && !agreed" class="field__err">
+      You must accept the declaration to continue.
+    </span>
   </div>
 </template>
 

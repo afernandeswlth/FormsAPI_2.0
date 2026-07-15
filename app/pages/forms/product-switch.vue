@@ -270,6 +270,7 @@ function downloadCopy() {
         <div v-if="step === 4" class="stack">
           <DeclarationCard
             v-model="agreed"
+            :show-errors="showErrors"
             title="Product Switch Declaration"
             :content="declarationText"
           />
@@ -286,11 +287,8 @@ function downloadCopy() {
           </p>
         </div>
 
-        <div v-if="errors.length || submitError" class="errors" role="alert">
-          <p v-if="submitError">{{ submitError }}</p>
-          <ul v-else>
-            <li v-for="(e, i) in errors" :key="i">{{ e }}</li>
-          </ul>
+        <div v-if="submitError" class="errors" role="alert">
+          <p>{{ submitError }}</p>
         </div>
 
         <FormNav
