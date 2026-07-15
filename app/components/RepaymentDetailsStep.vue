@@ -4,6 +4,7 @@ const frequency = defineModel<'' | 'weekly' | 'fortnightly' | 'monthly'>('freque
 })
 const amountType = defineModel<'' | 'minimum' | 'fixed'>('amountType', { required: true })
 const amount = defineModel<number | null>('amount', { required: true })
+const comments = defineModel<string>('comments', { default: '' })
 withDefaults(defineProps<{ showErrors?: boolean }>(), { showErrors: false })
 
 const freqOptions = [
@@ -97,6 +98,11 @@ const previewAmount = computed(() =>
       Please note that fees may apply in accordance with your loan contract and
       submission of this request does not guarantee approval.
     </p>
+
+    <label class="field comments-field">
+      <span>Comments <em>(optional)</em></span>
+      <textarea v-model="comments" rows="4" placeholder="Anything else we should know?" />
+    </label>
   </section>
 </template>
 
@@ -160,6 +166,12 @@ const previewAmount = computed(() =>
 }
 .cap {
   text-transform: capitalize;
+}
+.comments-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 24px;
 }
 .notice {
   margin-top: 24px;

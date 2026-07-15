@@ -876,8 +876,14 @@ async function fillRepaymentChange(pdf: PDFDocument, _form: PDFForm, rec: Servic
   // Row 1 — loan account, new amount, frequency
   T(rec.loanAccountNumber, 70, 569)
   T(d.amountType === 'fixed' ? money(d.amount) : 'Minimum', 300, 569)
-  const freqX: Record<string, number> = { weekly: 436, fortnightly: 509, monthly: 564 }
-  if (freqX[d.frequency] != null) T('X', freqX[d.frequency]!, 566, 11, bold)
+  // Frequency: draw an X centred on the checkbox to the right of each option.
+  const freqBoxCx: Record<string, number> = { weekly: 424, fortnightly: 487, monthly: 538 }
+  const cx = freqBoxCx[d.frequency]
+  if (cx != null) {
+    const size = 11
+    const xw = bold.widthOfTextAtSize('X', size)
+    page.drawText('X', { x: cx - xw / 2, y: 566, size, font: bold, color: ink })
+  }
 
   // Signatures section (one row per borrower)
   const sigY = [403, 375, 348, 320]

@@ -216,13 +216,20 @@ function downloadCopy() {
           tile-noun="Borrower"
         />
 
-        <LoanStep v-if="step === 1" v-model:loan="loan" :show-errors="showErrors" title="Loan Details" />
+        <LoanStep
+          v-if="step === 1"
+          v-model:loan="loan"
+          :show-errors="showErrors"
+          title="Loan Details"
+          hide-comments
+        />
 
         <RepaymentDetailsStep
           v-if="step === 2"
           v-model:frequency="frequency"
           v-model:amount-type="amountType"
           v-model:amount="amount"
+          v-model:comments="loan.comments"
           :show-errors="showErrors"
         />
 
