@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { icons } from '../../assets/icons'
 import { processFile, MAX_TOTAL_ATTACHMENT_BYTES } from '../../utils/attachments'
-import { englishError } from '../../utils/english'
+import { englishError, isEnglish } from '../../utils/english'
 import { stripDigits, isValidName, isValidAuPhone, isValidEmail } from '../../utils/validators'
 
 useHead({ title: 'Direct Debit Request — WLTH Client Hub' })
@@ -408,11 +408,14 @@ By signing this request you acknowledge that you have read and understood this D
                   type="text"
                   autocomplete="given-name"
                   placeholder="e.g. John"
-                  :class="{ invalid: showErrors && !isValidName(b.firstName) }"
+                  :class="{ invalid: showErrors && (!isValidName(b.firstName) || !isEnglish(b.firstName)) }"
                   @input="b.firstName = stripDigits(b.firstName)"
                 />
-                <span v-if="showErrors && !isValidName(b.firstName)" class="field__err">
-                  Enter a first name (letters only).
+                <span
+                  v-if="showErrors && (!isValidName(b.firstName) || !isEnglish(b.firstName))"
+                  class="field__err"
+                >
+                  Enter a first name using English letters only.
                 </span>
               </label>
               <label class="field">
@@ -422,11 +425,14 @@ By signing this request you acknowledge that you have read and understood this D
                   type="text"
                   autocomplete="family-name"
                   placeholder="e.g. Smith"
-                  :class="{ invalid: showErrors && !isValidName(b.lastName) }"
+                  :class="{ invalid: showErrors && (!isValidName(b.lastName) || !isEnglish(b.lastName)) }"
                   @input="b.lastName = stripDigits(b.lastName)"
                 />
-                <span v-if="showErrors && !isValidName(b.lastName)" class="field__err">
-                  Enter a last name (letters only).
+                <span
+                  v-if="showErrors && (!isValidName(b.lastName) || !isEnglish(b.lastName))"
+                  class="field__err"
+                >
+                  Enter a last name using English letters only.
                 </span>
               </label>
               <label class="field">
@@ -479,7 +485,15 @@ By signing this request you acknowledge that you have read and understood this D
           </label>
           <label class="field">
             <span>Comments <em>(optional)</em></span>
-            <textarea v-model="loan.comments" rows="4" placeholder="Anything else we should know?" />
+            <textarea
+              v-model="loan.comments"
+              rows="4"
+              placeholder="Anything else we should know?"
+              :class="{ invalid: showErrors && !isEnglish(loan.comments) }"
+            />
+            <span v-if="showErrors && !isEnglish(loan.comments)" class="field__err">
+              Please use English letters and numbers only.
+            </span>
           </label>
         </section>
 
@@ -504,6 +518,9 @@ By signing this request you acknowledge that you have read and understood this D
               WLTH Offset account
             </button>
           </div>
+          <span v-if="showErrors && !debitSource" class="field__err">
+            Select where your direct debits should come from.
+          </span>
 
           <!-- OFFSET: only the offset account number, no bank statement -->
           <div v-if="debitSource === 'offset'" class="acct">
@@ -551,12 +568,26 @@ By signing this request you acknowledge that you have read and understood this D
                   v-model="a.financialInstitution"
                   type="text"
                   placeholder="e.g. Commonwealth Bank"
-                  :class="{ invalid: showErrors && !a.financialInstitution.trim() }"
+                  :class="{ invalid: showErrors && (!a.financialInstitution.trim() || !isEnglish(a.financialInstitution)) }"
                 />
+                <span
+                  v-if="showErrors && (!a.financialInstitution.trim() || !isEnglish(a.financialInstitution))"
+                  class="field__err"
+                >
+                  Enter the financial institution using English letters only.
+                </span>
               </label>
               <label class="field">
                 <span>Branch <em>(optional)</em></span>
-                <input v-model="a.branch" type="text" placeholder="e.g. Sydney CBD" />
+                <input
+                  v-model="a.branch"
+                  type="text"
+                  placeholder="e.g. Sydney CBD"
+                  :class="{ invalid: showErrors && !isEnglish(a.branch) }"
+                />
+                <span v-if="showErrors && !isEnglish(a.branch)" class="field__err">
+                  Please use English letters and numbers only.
+                </span>
               </label>
               <label class="field field--full">
                 <span>Account Name</span>
@@ -564,8 +595,14 @@ By signing this request you acknowledge that you have read and understood this D
                   v-model="a.accountName"
                   type="text"
                   placeholder="e.g. John Smith"
-                  :class="{ invalid: showErrors && !a.accountName.trim() }"
+                  :class="{ invalid: showErrors && (!a.accountName.trim() || !isEnglish(a.accountName)) }"
                 />
+                <span
+                  v-if="showErrors && (!a.accountName.trim() || !isEnglish(a.accountName))"
+                  class="field__err"
+                >
+                  Enter the account name using English letters only.
+                </span>
               </label>
               <label class="field">
                 <span>BSB</span>
@@ -578,6 +615,9 @@ By signing this request you acknowledge that you have read and understood this D
                   :class="{ invalid: showErrors && !/^\d{3}-?\d{3}$/.test(a.bsb) }"
                   @input="onBsb(a, $event)"
                 />
+                <span v-if="showErrors && !/^\d{3}-?\d{3}$/.test(a.bsb)" class="field__err">
+                  Enter a valid 6-digit BSB.
+                </span>
               </label>
               <label class="field">
                 <span>Account Number</span>
@@ -588,6 +628,9 @@ By signing this request you acknowledge that you have read and understood this D
                   placeholder="e.g. 12345678"
                   :class="{ invalid: showErrors && !/^\d{5,10}$/.test(a.accountNumber) }"
                 />
+                <span v-if="showErrors && !/^\d{5,10}$/.test(a.accountNumber)" class="field__err">
+                  Enter a valid account number (5–10 digits).
+                </span>
               </label>
             </div>
           </div>
@@ -653,6 +696,12 @@ By signing this request you acknowledge that you have read and understood this D
 
             <p v-if="uploading" class="muted small">Uploading…</p>
             <p v-if="attachmentError" class="file-err">{{ attachmentError }}</p>
+            <span
+              v-if="showErrors && attachments.length < linkedAccounts.length"
+              class="field__err"
+            >
+              Attach at least {{ linkedAccounts.length }} bank statement{{ linkedAccounts.length > 1 ? 's' : '' }} — one per linked account.
+            </span>
           </div>
           </template>
         </section>
@@ -674,6 +723,9 @@ By signing this request you acknowledge that you have read and understood this D
               {{ f.label }}
             </button>
           </div>
+          <span v-if="showErrors && !repayment.frequency" class="field__err">
+            Select a payment frequency.
+          </span>
 
           <h3>Repayment Amount</h3>
           <div class="radios">
@@ -686,6 +738,9 @@ By signing this request you acknowledge that you have read and understood this D
               <span>Other Amount</span>
             </label>
           </div>
+          <span v-if="showErrors && !repayment.amountType" class="field__err">
+            Select a repayment amount option.
+          </span>
 
           <label v-if="repayment.amountType === 'other'" class="field field--money">
             <span>Amount</span>
@@ -786,6 +841,9 @@ By signing this request you acknowledge that you have read and understood this D
               <input v-model="agreed" type="checkbox" />
               <span>I have read and agree to the Direct Debit Service Agreement.</span>
             </label>
+            <span v-if="showErrors && !agreed" class="field__err">
+              You must accept the Direct Debit Service Agreement.
+            </span>
           </div>
 
           <div v-for="(_, i) in signatures" :key="i" class="card">
@@ -800,12 +858,9 @@ By signing this request you acknowledge that you have read and understood this D
           </p>
         </section>
 
-        <!-- ERRORS -->
-        <div v-if="errors.length || submitError" class="errors" role="alert">
-          <p v-if="submitError">{{ submitError }}</p>
-          <ul v-else>
-            <li v-for="(e, i) in errors" :key="i">{{ e }}</li>
-          </ul>
+        <!-- Submission failure (field-level issues are shown inline) -->
+        <div v-if="submitError" class="errors" role="alert">
+          <p>{{ submitError }}</p>
         </div>
 
         <!-- NAV -->
@@ -1246,6 +1301,21 @@ By signing this request you acknowledge that you have read and understood this D
   outline: none;
   border-color: var(--blue);
   box-shadow: 0 0 0 3px rgba(20, 69, 199, 0.12);
+}
+.field input.invalid,
+.field textarea.invalid {
+  border-color: var(--error);
+}
+.field input.invalid:focus,
+.field textarea.invalid:focus {
+  border-color: var(--error);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.14);
+}
+.field__err {
+  color: var(--error);
+  font-size: 0.8rem;
+  font-weight: 500;
+  margin-top: -1px;
 }
 .field--money .money {
   display: flex;
