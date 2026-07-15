@@ -236,6 +236,13 @@ function downloadCopy() {
       />
 
       <template v-else>
+        <FormIntro
+          v-if="step === 0"
+          title="Linked Account Nomination"
+          body="Use this form to add or update a linked transaction account associated with your home loan or offset account. Linked accounts can be used for eligible loan transactions, including future direct debit repayments or redraws where applicable. Please ensure the account details provided are accurate and the account is held in your name or is otherwise authorised for use with your loan."
+          pdf-href="/forms/linked-account.pdf"
+        />
+
         <BorrowersStep
           v-if="step === 0"
           v-model:count="borrowerCount"

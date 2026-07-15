@@ -208,6 +208,13 @@ function downloadCopy() {
       />
 
       <template v-else>
+        <FormIntro
+          v-if="step === 0"
+          title="Product Switch Request"
+          body="Use this form to request a change to another eligible home loan product, including switching between available variable and fixed interest rate options, repayment types, or other eligible product features. Product switches are subject to eligibility, approval, and the terms of your loan. Fees may apply, and if you are switching from a fixed interest rate loan, break costs and other charges may also apply. We recommend contacting our Customer Care team if you would like to understand the costs and implications before proceeding."
+          pdf-href="/forms/product-switch.pdf"
+        />
+
         <BorrowersStep
           v-if="step === 0"
           v-model:count="borrowerCount"

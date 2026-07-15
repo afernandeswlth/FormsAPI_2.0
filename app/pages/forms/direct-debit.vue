@@ -361,6 +361,13 @@ By signing this request you acknowledge that you have read and understood this D
 
       <template v-else>
         <!-- STEP 1: BORROWERS -->
+        <FormIntro
+          v-if="step === 0"
+          title="Direct Debit Request"
+          body="Use this form to set up or update your direct debit arrangement for your home loan repayments. If you would like to cancel a direct debit set-up, please contact us via phone or email. By submitting this request, you authorise WLTH to debit your nominated Australian bank account for your scheduled loan repayments in accordance with your loan contract and the Direct Debit Service Agreement. Please ensure your nominated account permits direct debits and contains sufficient cleared funds on each repayment due date."
+          pdf-href="/forms/direct-debit.pdf"
+        />
+
         <section v-if="step === 0" class="card">
           <h2>How many borrowers are on this loan?</h2>
           <div class="tiles">

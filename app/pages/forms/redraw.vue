@@ -258,6 +258,13 @@ function downloadCopy() {
       />
 
       <template v-else>
+        <FormIntro
+          v-if="step === 0"
+          title="Redraw Request"
+          body="Use this form to request access to available redraw funds from your eligible home loan. Redraw is available only where sufficient redraw funds are available under your loan. Supporting documentation may be required depending on the redraw amount and the purpose of the request. Redraw requests exceeding $100,000 must be accompanied by appropriate documentary evidence before they can be assessed and processed. If you would like your redraw funds paid to an external bank account in your name that is not already linked to your WLTH loan or offset account, you must first complete a Linked Account Nomination form. Once the account has been successfully linked, we can process your redraw request."
+          pdf-href="/forms/redraw.pdf"
+        />
+
         <BorrowersStep
           v-if="step === 0"
           v-model:count="borrowerCount"

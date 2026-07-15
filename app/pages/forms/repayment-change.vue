@@ -200,6 +200,13 @@ function downloadCopy() {
       />
 
       <template v-else>
+        <FormIntro
+          v-if="step === 0"
+          title="Repayment Change Request"
+          body="Use this form to request a change to your home loan repayment amount or repayment frequency. Submitting this form does not guarantee your requested changes will be applied. Requests are subject to your loan terms, applicable policies, and approval where required. Fees may apply in accordance with your loan contract. You should continue making your existing repayments until you receive confirmation that your request has been processed."
+          pdf-href="/forms/repayment-change.pdf"
+        />
+
         <BorrowersStep
           v-if="step === 0"
           v-model:count="borrowerCount"

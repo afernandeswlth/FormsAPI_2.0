@@ -209,6 +209,13 @@ function downloadCopy() {
       />
 
       <template v-else>
+        <FormIntro
+          v-if="step === 0"
+          title="Open Offset Account"
+          body="Use this form to apply to open an eligible offset account linked to your home loan. An offset account helps reduce the interest charged on your home loan by offsetting the balance held in your linked offset account against your eligible loan balance. Eligibility criteria and fees may apply. Each eligible home loan account can have only one offset account, and not all home loan products support offset accounts. Once your application is approved and your request has been processed, we will notify you of your new account details."
+          pdf-href="/forms/open-offset.pdf"
+        />
+
         <BorrowersStep
           v-if="step === 0"
           v-model:count="borrowerCount"

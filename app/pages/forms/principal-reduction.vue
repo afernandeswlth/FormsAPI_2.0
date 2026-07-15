@@ -200,6 +200,13 @@ function downloadCopy() {
       />
 
       <template v-else>
+        <FormIntro
+          v-if="step === 0"
+          title="Permanent Principal Reduction"
+          body="Use this form to request a permanent reduction of your home loan principal by applying a lump sum payment to your outstanding loan balance. This request is completed using the Product Switch Request form. A permanent principal reduction reduces your outstanding loan balance and cannot be reversed once processed. If your loan has a fixed interest rate, break costs, fees, or other charges may apply. Please contact us if you would like to discuss the impact before submitting your request."
+          pdf-href="/forms/product-switch.pdf"
+        />
+
         <BorrowersStep
           v-if="step === 0"
           v-model:count="borrowerCount"
