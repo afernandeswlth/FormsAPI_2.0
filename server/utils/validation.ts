@@ -330,7 +330,6 @@ const productSwitch = baseSchema
   .extend({
     borrowers: z.array(borrowerSchema).min(1).max(4),
     productType: z.enum(['pi', 'io', 'fixed']),
-    interestRate: z.number().positive().max(100).optional(),
     term: z.string().optional(),
     reason: z.string().min(1, 'A reason is required').max(1000),
     declaration: z.object({

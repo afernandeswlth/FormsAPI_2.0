@@ -21,7 +21,6 @@ const borrowerCount = ref(1)
 const borrowers = ref<Borrower[]>([{ firstName: '', lastName: '', mobile: '', email: '' }])
 const loan = ref({ accountNumber: '', comments: '' })
 const productType = ref<ProductType>('')
-const interestRate = ref<number | null>(null)
 const term = ref('')
 const reason = ref('')
 const agreed = ref(false)
@@ -131,7 +130,6 @@ async function submit() {
     loanAccountNumber: loan.value.accountNumber,
     borrowers: borrowers.value,
     productType: productType.value,
-    interestRate: typeof interestRate.value === 'number' ? interestRate.value : undefined,
     term: needsTerm.value ? term.value : undefined,
     reason: reason.value,
     declaration: { agreed: agreed.value },
@@ -169,7 +167,6 @@ function downloadCopy() {
     '',
     `Loan Account: ${loan.value.accountNumber}`,
     `Requested Product: ${productLabel.value}`,
-    interestRate.value ? `Requested Rate: ${interestRate.value}%` : '',
     needsTerm.value && term.value ? `Term: ${term.value}` : '',
     `Reason: ${reason.value}`,
     '',
@@ -229,7 +226,6 @@ function downloadCopy() {
         <NewProductStep
           v-if="step === 2"
           v-model:product-type="productType"
-          v-model:interest-rate="interestRate"
           v-model:term="term"
           v-model:reason="reason"
           :show-errors="showErrors"
@@ -253,9 +249,6 @@ function downloadCopy() {
           <ReviewCard title="New Product" @edit="goTo(2)">
             <div class="review__row">
               <strong>Selected Product</strong><span>{{ productLabel }}</span>
-            </div>
-            <div v-if="interestRate" class="review__row">
-              <strong>Requested Rate</strong><span>{{ interestRate }}%</span>
             </div>
             <div v-if="needsTerm && term" class="review__row">
               <strong>Term</strong><span>{{ term }}</span>

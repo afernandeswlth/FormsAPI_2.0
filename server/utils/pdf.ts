@@ -495,7 +495,6 @@ async function generateSummaryPdf(rec: ServicingRequest): Promise<Uint8Array> {
   }
   if (d.purpose) det.push(['Purpose', PURPOSE_LABEL[d.purpose] ?? d.purpose])
   if (d.productType) det.push(['Requested Product', PRODUCT_LABEL[d.productType] ?? d.productType])
-  if (d.interestRate != null) det.push(['Preferred Rate', `${d.interestRate}%`])
   if (d.term) det.push(['Term', d.term])
   if (d.reason) det.push(['Reason', d.reason])
   if (det.length) {
@@ -824,7 +823,6 @@ async function fillProductSwitchPage(
       setText(form, 'Enter Text4', d.term)
     } else if (d.productType === 'fixed') {
       markX('Check Box3')
-      if (d.interestRate != null) setText(form, 'Enter Text5', `${d.interestRate}%`)
       setText(form, 'Enter Text6', d.term)
     }
     setText(form, 'Enter Text25', d.reason)

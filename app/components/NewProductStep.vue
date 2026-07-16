@@ -2,7 +2,6 @@
 export type ProductType = '' | 'pi' | 'io' | 'fixed'
 
 const productType = defineModel<ProductType>('productType', { required: true })
-const interestRate = defineModel<number | null>('interestRate', { required: true })
 const term = defineModel<string>('term', { required: true })
 const reason = defineModel<string>('reason', { required: true })
 withDefaults(defineProps<{ showErrors?: boolean }>(), { showErrors: false })
@@ -28,14 +27,10 @@ const products = [
   },
 ] as const
 
+// Period options from 1 month up to 5 years.
 const TERM_OPTIONS = [
-  '12 Months',
-  '24 Months',
-  '36 Months',
-  '1 Year',
-  '2 Years',
-  '3 Years',
-  '5 Years',
+  ...Array.from({ length: 11 }, (_, i) => `${i + 1} Month${i === 0 ? '' : 's'}`),
+  ...Array.from({ length: 5 }, (_, i) => `${i + 1} Year${i === 0 ? '' : 's'}`),
 ]
 
 const selected = computed(() => products.find((p) => p.value === productType.value))
@@ -82,22 +77,6 @@ watch(productType, () => {
             <p>{{ selected.desc }}</p>
           </div>
         </div>
-
-        <label class="field" style="margin-top: 22px; max-width: 320px">
-          <span>Preferred Interest Rate <em>(optional)</em></span>
-          <div class="rate">
-            <input
-              v-model.number="interestRate"
-              type="number"
-              min="0"
-              max="100"
-              step="0.01"
-              inputmode="decimal"
-              placeholder="e.g. 5.99"
-            />
-            <span class="rate__suffix">%</span>
-          </div>
-        </label>
 
         <template v-if="needsTerm">
           <h3>{{ termQuestion }}</h3>
@@ -210,31 +189,6 @@ watch(productType, () => {
   margin: 0;
   color: var(--muted);
   line-height: 1.5;
-}
-.rate {
-  display: flex;
-  align-items: center;
-  border: 1.5px solid var(--line);
-  border-radius: 12px;
-  overflow: hidden;
-}
-.rate:focus-within {
-  border-color: var(--blue);
-  box-shadow: 0 0 0 3px rgba(20, 69, 199, 0.12);
-}
-.rate input {
-  flex: 1;
-  border: none;
-  outline: none;
-  min-height: 52px;
-  padding: 0 0 0 14px;
-  font: inherit;
-  color: var(--ink);
-}
-.rate__suffix {
-  padding: 0 16px;
-  color: var(--muted);
-  font-weight: 600;
 }
 .select {
   min-height: 52px;
