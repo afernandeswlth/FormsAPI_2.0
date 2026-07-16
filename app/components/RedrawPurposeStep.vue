@@ -45,10 +45,10 @@ const options = [
         v-model="reason"
         rows="4"
         placeholder="e.g. Funds will be used towards a property purchase settling on 12/08/2026."
-        :class="{ invalid: showErrors && !reason.trim() }"
+        :class="{ invalid: showErrors && reason.trim().length < 40 }"
       />
-      <span v-if="showErrors && !reason.trim()" class="field__err">
-        Please tell us how the funds will be used.
+      <span v-if="showErrors && reason.trim().length < 40" class="field__err">
+        Please provide us more information about your request.
       </span>
     </label>
   </section>

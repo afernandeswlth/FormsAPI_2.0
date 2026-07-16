@@ -6,8 +6,17 @@ export type DestinationAccount = {
 }
 
 const account = defineModel<DestinationAccount>({ required: true })
+const source = defineModel<'loan' | 'offset'>('source', { default: 'loan' })
 
-withDefaults(defineProps<{ showErrors?: boolean }>(), { showErrors: false })
+const props = withDefaults(
+  defineProps<{ showErrors?: boolean; smsfProvided?: boolean }>(),
+  { showErrors: false, smsfProvided: false },
+)
+
+function selectSource(s: 'loan' | 'offset') {
+  if (s === 'loan' && props.smsfProvided) return
+  source.value = s
+}
 
 function onBsb(e: Event) {
   const digits = (e.target as HTMLInputElement).value.replace(/\D/g, '').slice(0, 6)
@@ -29,6 +38,33 @@ const masked = computed(() => `XXXX${account.value.accountNumber.slice(-4)}`)
 <template>
   <section class="card">
     <h2>Where would you like the funds sent?</h2>
+
+    <div class="source">
+      <span class="source__label">From Available Redraw in:</span>
+      <div class="source__opts">
+        <button
+          type="button"
+          class="source__opt"
+          :class="{ 'is-selected': source === 'loan' }"
+          :disabled="smsfProvided"
+          @click="selectSource('loan')"
+        >
+          Loan account
+        </button>
+        <button
+          type="button"
+          class="source__opt"
+          :class="{ 'is-selected': source === 'offset' }"
+          @click="selectSource('offset')"
+        >
+          Offset account
+        </button>
+      </div>
+    </div>
+    <p v-if="smsfProvided" class="muted small source__note">
+      An SMSF trust name was provided, so redraws can only be made from the offset account.
+    </p>
+
     <div class="grid2">
       <label class="field field--full">
         <span>Account Name <span class="req">*</span></span>
@@ -87,6 +123,50 @@ const masked = computed(() => `XXXX${account.value.accountNumber.slice(-4)}`)
 <style scoped>
 .req {
   color: #d92d20;
+}
+.source {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 22px;
+}
+.source__label {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--navy);
+}
+.source__opts {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.source__opt {
+  min-height: 48px;
+  padding: 0 22px;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-pill);
+  background: #fff;
+  font: inherit;
+  font-weight: 600;
+  color: var(--navy);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.source__opt:hover:not(:disabled) {
+  border-color: var(--blue);
+}
+.source__opt.is-selected {
+  border-color: var(--blue);
+  color: var(--blue);
+  background: rgba(20, 69, 199, 0.06);
+}
+.source__opt:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.source__note {
+  margin: 0 0 18px;
 }
 .preview {
   margin-top: 24px;

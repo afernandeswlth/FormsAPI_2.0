@@ -718,6 +718,23 @@ async function fillRedraw(pdf: PDFDocument, form: PDFForm, rec: ServicingRequest
   const dateF = ['Date1_af_date', 'Date2_af_date', 'Date3_af_date', 'Date4_af_date']
   b.slice(0, 4).forEach((_x, i) => setText(form, dateF[i]!, isoDate(d.signatures?.[i]?.signedAt)))
 
+  // Note the source of the redraw funds at the top of the (roomy) reason box.
+  // Shrink the reason field from the top so the note doesn't overlap the text.
+  let noteY = 460
+  try {
+    const w = form.getTextField('Redraw Reason').acroField.getWidgets()[0]!
+    const r = w.getRectangle()
+    w.setRectangle({ x: r.x, y: r.y, width: r.width, height: r.height - 24 })
+    noteY = r.y + r.height - 17 // just inside the freed strip
+  } catch {
+    /* fall back to the default y */
+  }
+  const sourceNote =
+    d.redrawSource === 'offset'
+      ? 'Fund to be redrawn from available balance in Offset Account.'
+      : 'Fund to be redrawn from available balance in Loan Account.'
+  pages[0]!.drawText(sourceNote, { x: 33, y: noteY, size: 9, font, color: rgb(0.1, 0.12, 0.16) })
+
   const purposeBox: Record<string, string> = {
     property: 'Check Box1',
     construction: 'Check Box2',

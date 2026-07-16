@@ -221,10 +221,16 @@ const repaymentChange = baseSchema
 const redraw = baseSchema
   .extend({
     borrowers: z.array(borrowerSchema).min(1).max(4),
+    smsfTrustName: z.string().max(200).optional(),
     amount: money,
+    // Which WLTH account the available redraw is drawn from.
+    redrawSource: z.enum(['loan', 'offset']).default('loan'),
     destination: bankAccountSchema,
     purpose: z.enum(['property', 'construction', 'third-party', 'personal', 'other']),
-    reason: z.string().min(1, 'A reason is required').max(1000),
+    reason: z
+      .string()
+      .min(40, 'Please provide us more information about your request')
+      .max(1000),
     attachments: z.array(attachmentSchema).max(20).default([]),
     declaration: z.object({
       agreed: z.literal(true, {

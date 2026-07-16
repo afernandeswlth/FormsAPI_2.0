@@ -24,9 +24,19 @@ const EVIDENCE_THRESHOLD = 100000
 // State
 const borrowerCount = ref(1)
 const borrowers = ref<Borrower[]>([{ firstName: '', lastName: '', mobile: '', email: '' }])
-const loan = ref({ accountNumber: '', comments: '' })
+const loan = ref({ accountNumber: '', comments: '', smsfTrustName: '' })
 const amount = ref<number | null>(null)
 const destination = ref<DestinationAccount>({ accountName: '', bsb: '', accountNumber: '' })
+// Which WLTH account the available redraw is drawn from.
+const redrawSource = ref<'loan' | 'offset'>('loan')
+
+// SMSF loans can only redraw from the offset account (SIS Act).
+const smsfProvided = computed(() => !!loan.value.smsfTrustName?.trim())
+watch(smsfProvided, (on) => {
+  if (on) redrawSource.value = 'offset'
+})
+const smsfNote =
+  'Due to SIS Act guidelines, SMSF loan account redraws are prohibited. However, under special conditions may be permitted. Please call us on 13 95 84 or email us at hello@wlth.com to discuss.'
 const purpose = ref<RedrawPurpose>('')
 const reason = ref('')
 const evidence = ref<Attachment[]>([])
@@ -104,7 +114,8 @@ function validateStep(i: number): string[] {
     if (!/^\d{5,10}$/.test(destination.value.accountNumber)) e.push('Account number must be 5–10 digits')
   } else if (i === 4) {
     if (!purpose.value) e.push('Select a redraw purpose')
-    if (!reason.value.trim()) e.push('Please tell us how the funds will be used')
+    if (reason.value.trim().length < 40)
+      e.push('Please provide us more information about your request')
     if (evidenceRequiredCount.value > 0 && evidence.value.length < 1)
       e.push('Supporting documentation is required for this redraw')
   } else if (i === 6) {
@@ -176,7 +187,9 @@ async function submit() {
     },
     loanAccountNumber: loan.value.accountNumber,
     borrowers: borrowers.value,
+    smsfTrustName: loan.value.smsfTrustName || undefined,
     amount: Number(amount.value),
+    redrawSource: redrawSource.value,
     destination: destination.value,
     purpose: purpose.value,
     reason: reason.value,
@@ -274,11 +287,24 @@ function downloadCopy() {
           tile-noun="Borrower"
         />
 
-        <LoanStep v-if="step === 1" v-model:loan="loan" :show-errors="showErrors" title="Loan Details" />
+        <LoanStep
+          v-if="step === 1"
+          v-model:loan="loan"
+          :show-errors="showErrors"
+          title="Loan Details"
+          show-smsf
+          :smsf-note="smsfNote"
+        />
 
         <RedrawAmountStep v-if="step === 2" v-model:amount="amount" :show-errors="showErrors" />
 
-        <DestinationAccountStep v-if="step === 3" v-model="destination" :show-errors="showErrors" />
+        <DestinationAccountStep
+          v-if="step === 3"
+          v-model="destination"
+          v-model:source="redrawSource"
+          :smsf-provided="smsfProvided"
+          :show-errors="showErrors"
+        />
 
         <template v-if="step === 4">
           <div class="stack">
@@ -311,6 +337,9 @@ function downloadCopy() {
             <div class="review__row">
               <strong>Loan Account</strong><span>{{ loan.accountNumber }}</span>
             </div>
+            <div v-if="loan.smsfTrustName" class="review__row">
+              <strong>SMSF Trust Name</strong><span>{{ loan.smsfTrustName }}</span>
+            </div>
           </ReviewCard>
 
           <ReviewCard title="Redraw Amount" @edit="goTo(2)">
@@ -320,6 +349,10 @@ function downloadCopy() {
           </ReviewCard>
 
           <ReviewCard title="Destination Account" @edit="goTo(3)">
+            <div class="review__row">
+              <strong>Redraw from</strong>
+              <span>{{ redrawSource === 'offset' ? 'Offset account' : 'Loan account' }}</span>
+            </div>
             <div class="review__row">
               <strong>{{ destination.accountName }}</strong>
               <span>BSB {{ destination.bsb }} · XXXX{{ destination.accountNumber.slice(-4) }}</span>
