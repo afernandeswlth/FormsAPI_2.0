@@ -28,7 +28,30 @@ function ascii(value: unknown): string {
 function setText(form: PDFForm, name: string, value: unknown) {
   try {
     const f = form.getTextField(name)
-    f.setText(ascii(value))
+    const v = ascii(value)
+    // Comb fields (e.g. "ACCOUNT No") cap length at their cell count — an
+    // over-length value (a 10-digit account number in a 9-cell field) would
+    // make setText throw and leave the field blank. Relax the field so the
+    // full value still renders when it doesn't fit the cells.
+    let max: number | undefined
+    try {
+      max = f.getMaxLength()
+    } catch {
+      max = undefined
+    }
+    if (max != null && v.length > max) {
+      try {
+        f.removeMaxLength()
+      } catch {
+        /* ignore */
+      }
+      try {
+        f.disableCombing()
+      } catch {
+        /* ignore */
+      }
+    }
+    f.setText(v)
     f.setFontSize(9)
   } catch {
     /* field absent on this template — ignore */
