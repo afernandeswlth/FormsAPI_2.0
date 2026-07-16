@@ -111,11 +111,11 @@ watch(productType, () => {
         <textarea
           v-model="reason"
           class="reason"
-          :class="{ invalid: showErrors && !reason.trim() }"
+          :class="{ invalid: showErrors && reason.trim().length < 50 }"
           placeholder="Example: I would like greater repayment certainty and would prefer a fixed rate product for the next 3 years."
         />
-        <span v-if="showErrors && !reason.trim()" class="field__err">
-          Please tell us why you would like to switch products.
+        <span v-if="showErrors && reason.trim().length < 50" class="field__err">
+          Please provide us more information about your request.
         </span>
       </label>
     </section>

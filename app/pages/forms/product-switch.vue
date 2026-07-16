@@ -64,7 +64,8 @@ function validateStep(i: number): string[] {
   } else if (i === 2) {
     if (!productType.value) e.push('Select the product you would like to switch to')
     if (needsTerm.value && !term.value) e.push('Select a period for your chosen product')
-    if (!reason.value.trim()) e.push('Please tell us why you would like to switch products')
+    if (reason.value.trim().length < 50)
+      e.push('Please provide us more information about your request')
   } else if (i === 4) {
     if (!agreed.value) e.push('You must accept the declaration')
     signatures.value.forEach((s, idx) => {

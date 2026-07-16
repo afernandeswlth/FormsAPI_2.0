@@ -331,7 +331,10 @@ const productSwitch = baseSchema
     borrowers: z.array(borrowerSchema).min(1).max(4),
     productType: z.enum(['pi', 'io', 'fixed']),
     term: z.string().optional(),
-    reason: z.string().min(1, 'A reason is required').max(1000),
+    reason: z
+      .string()
+      .min(50, 'Please provide us more information about your request')
+      .max(1000),
     declaration: z.object({
       agreed: z.literal(true, {
         errorMap: () => ({ message: 'You must accept the declaration' }),
